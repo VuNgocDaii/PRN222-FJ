@@ -1,0 +1,15 @@
+@model QuanLyCuDan.Auth.RegisterInput
+@{ Layout = "_AccountLayout"; ViewData["Title"] = "Đăng ký cư dân"; }
+<h1>Đăng ký cư dân</h1>
+        <p class="muted">Tài khoản cần được phê duyệt sau khi đăng ký.</p>
+        <form asp-controller="Account" asp-action="Register" method="post">
+            <div asp-validation-summary="All" class="validation" role="alert"></div>
+            <label>Họ và tên<input asp-for="FullName" autocomplete="name" required maxlength="150"></label>
+            <label>Số điện thoại<input asp-for="PhoneNumber" type="tel" autocomplete="tel" required maxlength="20"></label>
+            <label>Tên đăng nhập<input asp-for="UserName" autocomplete="username" required minlength="3" maxlength="50"></label>
+            <label>Mật khẩu<input name="Password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
+            <label>Nhập lại mật khẩu<input name="ConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
+            <button class="primary wide" type="submit">Gửi đăng ký</button>
+        </form>
+        <p class="footnote">Đã có tài khoản? <a asp-controller="Account" asp-action="Login">Đăng nhập</a></p>
+    

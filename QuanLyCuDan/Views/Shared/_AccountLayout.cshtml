@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>@ViewData["Title"] · Quản lý cư dân</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+</head>
+<body class="login-page">
+    <main class="login-card">
+        <a class="auth-brand" asp-controller="Account" asp-action="Login"><span class="brand-mark">KDC</span><span>Quản lý cư dân</span></a>
+        @RenderBody()
+    </main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,100 @@
+@model QuanLyCuDan.Models.RegistrationListViewModel
+@{
+    Layout = "_ManagementLayout";
+    ViewData["Title"] = "Duyệt đăng ký";
+}
+<header class="page-header"><div><h1>Duyệt đăng ký cư dân</h1><p class="muted">Đối chiếu thông tin đăng ký với hồ sơ cư dân trước khi cấp quyền truy cập.</p></div></header>
+<nav class="status-tabs" aria-label="Trạng thái đăng ký">
+    <a asp-action="Index" asp-route-status="PENDING" class="@(Model.Status == "PENDING" ? "active" : "")" aria-current="@(Model.Status == "PENDING" ? "page" : null)">Chờ duyệt</a>
+    <a asp-action="Index" asp-route-status="APPROVED" class="@(Model.Status == "APPROVED" ? "active" : "")" aria-current="@(Model.Status == "APPROVED" ? "page" : null)">Đã duyệt</a>
+    <a asp-action="Index" asp-route-status="REJECTED" class="@(Model.Status == "REJECTED" ? "active" : "")" aria-current="@(Model.Status == "REJECTED" ? "page" : null)">Đã từ chối</a>
+</nav>
+@if (TempData["Message"] is string message)
+{
+    <p class="message success" role="status">@message</p>
+}
+@if (TempData["Error"] is string error)
+{
+    <p class="message error" role="alert">@error</p>
+}
+@if (Model.Users.Count == 0)
+{
+    <div class="panel empty">Chưa có đăng ký.</div>
+}
+<label class="registration-search">Tìm trong danh sách<input type="search" id="registration-search" placeholder="Họ tên, tên đăng nhập hoặc số điện thoại"></label>
+<p id="registration-empty" class="muted" role="status" hidden>Không có đăng ký phù hợp.</p>
+<section class="panel table-wrap">
+    <table>
+        <thead><tr><th>Họ và tên</th><th>Tên đăng nhập</th><th>Số điện thoại</th><th>Ngày đăng ký</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody>
+        @foreach (var user in Model.Users)
+        {
+            <tr class="registration-row" data-name="@user.FullName" data-username="@user.UserName" data-phone="@user.PhoneNumber">
+                <td>@user.FullName</td>
+                <td>@user.UserName</td>
+                <td>@(user.PhoneNumber ?? "—")</td>
+                <td>@user.CreatedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@(user.VerificationStatus == "PENDING" ? "Chờ duyệt" : user.VerificationStatus == "APPROVED" ? "Đã duyệt" : "Đã từ chối")</td>
+                <td><button type="button" class="secondary" data-review-open="detail-@user.Id">Xem chi tiết</button></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>
+@foreach (var user in Model.Users)
+{
+    <dialog id="detail-@user.Id" class="password-dialog registration-dialog" aria-labelledby="detail-title-@user.Id">
+        <div class="section-heading"><h2 id="detail-title-@user.Id">Chi tiết đăng ký</h2><button type="button" class="secondary" data-review-close>Đóng</button></div>
+        <header class="section-heading">
+            <div>
+                <h2>@user.FullName</h2>
+                <p class="muted small">@user.UserName · @(user.PhoneNumber ?? "Chưa có số điện thoại")</p>
+            </div>
+            <time class="muted small">@user.CreatedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</time>
+        </header>
+        @if (user.VerificationStatus == "PENDING")
+        {
+            <h2>Xác minh và phê duyệt</h2>
+            <form method="post" class="review-form">
+                <input type="hidden" name="UserId" value="@user.Id">
+                <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(user.RowVersion)">
+                <input type="hidden" name="Approve" value="true">
+                <label>Tìm hồ sơ cư dân<input type="search" class="resident-search" placeholder="Họ tên hoặc số điện thoại"></label>
+                <label>Hồ sơ cư dân chưa liên kết tài khoản
+                    <select name="ResidentId" required>
+                        <option value="">Chọn hồ sơ để xác minh</option>
+                        @foreach (var resident in Model.Residents)
+                        {
+                            <option value="@resident.Id">@resident.FullName · @resident.DateOfBirth.ToString("dd/MM/yyyy") · @resident.PhoneNumber · Mã #@resident.Id</option>
+                        }
+                    </select>
+                </label>
+                @if (Model.Residents.Count == 0)
+                {
+                    <p class="muted small">Chưa có hồ sơ cư dân có thể liên kết.</p>
+                }
+                <p class="muted small">Nếu chưa có hồ sơ phù hợp, cần bổ sung hồ sơ cư dân trước. Không chọn hồ sơ của người khác để duyệt.</p>
+                <label class="check"><input type="checkbox" name="Verified" required>Tôi đã đối chiếu và xác nhận đúng hồ sơ cư dân.</label>
+                <p class="muted small">Sau khi duyệt, tài khoản được đăng nhập và sử dụng quyền cư dân.</p>
+                <div class="inline"><button type="submit" class="primary" disabled="@(Model.Residents.Count == 0)">Phê duyệt và cấp quyền</button><button type="button" class="danger" data-review-reject>Từ chối đăng ký</button></div>
+            </form>
+                <form method="post" class="review-form rejection-form" hidden>
+                    <input type="hidden" name="UserId" value="@user.Id">
+                    <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(user.RowVersion)">
+                    <input type="hidden" name="Approve" value="false">
+                    <button type="submit">Từ chối đăng ký</button>
+                </form>
+        }
+        else if (user.VerificationStatus == "REJECTED")
+        {
+            <p class="muted">Đăng ký đã bị từ chối.</p>
+        }
+        @if (user.ReviewedAt.HasValue)
+        {
+            <p class="muted small">Xét duyệt lúc @user.ReviewedAt.Value.AddHours(7).ToString("dd/MM/yyyy HH:mm")</p>
+        }
+    </dialog>
+}
+@section Scripts {
+    <script src="~/js/registrations.js" asp-append-version="true" defer></script>
+}

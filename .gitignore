@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+.vs/
+**/*.csproj.user
+**/*.pfx
+.local/
+/Doc/
+**/.nuget/
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/*.tmp

@@ -1,0 +1,22 @@
+@model QuanLyCuDan.Models.ManagementModule
+@{
+    Layout = "_ManagementLayout";
+    ViewData["Title"] = Model.Title;
+    ViewData["ManagementModule"] = Model.Key;
+}
+<header class="page-header">
+    <div>
+        <h1>@Model.Title</h1>
+        <p class="muted">@Model.Description</p>
+    </div>
+</header>
+<section class="panel">
+    <h2>Chức năng dự kiến</h2>
+    <ul class="module-features">
+        @foreach (var feature in Model.Features)
+        {
+            <li>@feature</li>
+        }
+    </ul>
+    <p class="muted">Chức năng đang được xây dựng.</p>
+</section>

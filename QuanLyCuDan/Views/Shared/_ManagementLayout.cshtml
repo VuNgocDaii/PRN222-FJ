@@ -1,0 +1,89 @@
+@{
+    var access = ViewData["Permissions"] as HashSet<string> ?? new HashSet<string>();
+    bool isAdminPage = ViewData["AdminTabs"] is true;
+    bool canReview = ViewData["CanReviewRegistrations"] is true;
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+}
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>@ViewData["Title"] · Quản lý cư dân</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="/Account/Profile"><span class="brand-mark">KDC</span><strong>Quản lý cư dân</strong></a>
+            <nav aria-label="Điều hướng chính">
+                @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read"))
+                {
+                    @if (isAdminPage)
+                    {
+                        <button data-tab="users" class="nav-item" hidden="@(!access.Contains("accounts.read"))">Tài khoản</button>
+                        <button data-tab="roles" class="nav-item" hidden="@(!access.Contains("roles.read"))">Vai trò</button>
+                        <button data-tab="permissions" class="nav-item" hidden="@(!access.Contains("permissions.read"))">Quyền truy cập</button>
+                    }
+                    else
+                    {
+                        @if (access.Contains("accounts.read"))
+                        {
+                            <a href="/Admin?tab=users" class="nav-item">Tài khoản</a>
+                        }
+                        @if (access.Contains("roles.read"))
+                        {
+                            <a href="/Admin?tab=roles" class="nav-item">Vai trò</a>
+                        }
+                        @if (access.Contains("permissions.read"))
+                        {
+                            <a href="/Admin?tab=permissions" class="nav-item">Quyền truy cập</a>
+                        }
+                    }
+                }
+                @if (canReview)
+                {
+                    <a href="/Registrations" class="nav-item @(controller == "Registrations" ? "active" : "")">Duyệt đăng ký</a>
+                }
+            </nav>
+            <div class="sidebar-bottom">
+                <div class="account-actions">
+                    <span class="account-name">@User.Identity?.Name</span>
+                    <button type="button" class="password-link" id="open-password-dialog">Thay đổi mật khẩu</button>
+                </div>
+                <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary wide" type="submit">Đăng xuất</button></form>
+            </div>
+        </aside>
+        <main class="workspace">@RenderBody()</main>
+    </div>
+    <dialog id="password-dialog" class="password-dialog" aria-labelledby="password-dialog-title">
+        <div class="section-heading">
+            <h2 id="password-dialog-title">Thay đổi mật khẩu</h2>
+            <button type="button" class="secondary" id="close-password-dialog" aria-label="Đóng">Đóng</button>
+        </div>
+        <p class="muted small">Bạn cần đăng nhập lại sau khi đổi mật khẩu.</p>
+        <p id="password-notice" class="message error" role="alert" hidden></p>
+        <form id="change-password-form">
+            <label>Mật khẩu hiện tại<input name="currentPassword" type="password" autocomplete="current-password" required autofocus></label>
+            <label>Mật khẩu mới<input name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+            <label>Xác nhận mật khẩu mới<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+            <button class="primary" type="submit">Đổi mật khẩu</button>
+        </form>
+    </dialog>
+    <dialog id="action-dialog" class="password-dialog" aria-labelledby="action-dialog-title">
+        <form id="action-dialog-form">
+            <h2 id="action-dialog-title"></h2>
+            <p id="action-dialog-description" class="muted dialog-description"></p>
+            <label id="action-dialog-field" hidden><span id="action-dialog-label"></span><input id="action-dialog-input" maxlength="1000"></label>
+            <div class="inline">
+                <button id="action-dialog-submit" class="primary" type="submit">Xác nhận</button>
+                <button id="action-dialog-cancel" class="secondary" type="button">Hủy</button>
+            </div>
+        </form>
+    </dialog>
+    <script src="~/js/action-dialog.js" asp-append-version="true" defer></script>
+    <script src="~/js/auth-client.js" asp-append-version="true" defer></script>
+    <script src="~/js/password-dialog.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
