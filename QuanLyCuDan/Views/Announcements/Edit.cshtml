@@ -1,0 +1,15 @@
+﻿@model AnnouncementEditViewModel
+@{ Layout = "_ManagementLayout"; ViewData["Title"] = Model.Id == null ? "Soạn thông báo" : "Chỉnh sửa thông báo"; }
+<a href="@(Model.Id == null ? "/Announcements" : "/Announcements/" + Model.Id)" class="announcement-back">← Quay lại</a>
+<header class="page-header"><div><h1>@ViewData["Title"]</h1><p class="muted">Nội dung được lưu nháp; cần gửi duyệt trước khi đăng.</p></div></header>
+<section class="panel announcement-editor"><form action="@(Model.Id == null ? "/Announcements/Create" : "/Announcements/" + Model.Id + "/Edit")" method="post" asp-antiforgery="true">
+    <div asp-validation-summary="All" class="validation" role="alert"></div>
+    <input asp-for="Input.RowVersion" type="hidden">
+    <div class="registration-fields"><label>Tổ dân phố<select asp-for="Input.ResidentialGroupId" required>@foreach (var g in Model.Groups) { <option value="@g.Id">@g.Name</option> }</select></label><label>Đối tượng đọc<select asp-for="Input.Audience"><option value="RESIDENTS">Cư dân thuộc tổ dân phố</option><option value="PUBLIC">Công khai trên trang chủ</option></select></label></div>
+    <label>Tiêu đề<input asp-for="Input.Title" maxlength="250" required placeholder="Nhập tiêu đề thông báo"></label>
+    <label>Nội dung<textarea asp-for="Input.Body" rows="12" maxlength="20000" required placeholder="Nhập nội dung thông báo…"></textarea><span class="muted small">Nội dung hiển thị dưới dạng văn bản, giữ nguyên xuống dòng. Tối đa 20.000 ký tự.</span></label>
+    <label>Hết hạn hiển thị (không bắt buộc, giờ Việt Nam)<input asp-for="Input.ExpiresAtLocal" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}"><span class="muted small">Thông báo tự ngừng hiển thị với người đọc khi hết hạn.</span></label>
+    <details class="announcement-preview"><summary>Xem trước nội dung</summary><article><h2 id="announcement-preview-title">@Model.Input.Title</h2><div id="announcement-preview-body" class="announcement-prose">@Model.Input.Body</div></article></details>
+    <div class="inline"><button class="primary" type="submit">Lưu nháp</button><a href="/Announcements" class="announcement-button secondary">Về danh sách</a></div>
+</form></section>
+@section Scripts { <script src="~/js/announcement-management.js" asp-append-version="true" defer></script> }

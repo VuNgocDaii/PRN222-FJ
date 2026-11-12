@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace QuanLyCuDan.Auth;
 
-public class RegisterInput
+public class RegisterInput : RegistrationProfileInput
 {
     [Required(ErrorMessage = "Nhập tên đăng nhập."), StringLength(256)]
     [RegularExpression(@"[a-zA-Z0-9_.-]{3,50}", ErrorMessage = "Tên đăng nhập gồm 3–50 chữ cái không dấu, số, dấu chấm, gạch ngang hoặc gạch dưới.")]
@@ -29,6 +29,10 @@ public class RegistrationReviewInput
     public string RowVersion { get; set; } = "";
     public bool Approve { get; set; }
     public long? ResidentId { get; set; }
+    public bool CreateResident { get; set; }
+    public bool Verified { get; set; }
+    public long? HouseholdId { get; set; }
+    [StringLength(50)] public string? RelationshipToHead { get; set; }
     [StringLength(1000)]
     public string? Reason { get; set; }
 }
