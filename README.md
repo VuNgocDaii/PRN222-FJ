@@ -59,6 +59,14 @@ API login returns an access token and sets an HttpOnly refresh cookie. The front
 
 ## Checks
 
+Run the notification management checks against the local fictional demo database:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .validation/test-notification-management.ps1 -SqlServer localhost
+```
+
+The runner applies additive upgrades, builds the main app, runs authentication client tests, starts an isolated app on port 5199, and runs the announcement workflow suite. It checks draft/edit/submit/reject/approve/publish/unpublish, permissions, public/private visibility, notification recipients, CSRF and concurrency. Temporary workflow fixtures are cleaned up by the suite, and the runner stops its app and restores environment variables. Logs are saved under `QuanLyCuDan/.local/notification-tests`. Use `-Port` to choose another port or `-SqlServer '.\SQLEXPRESS'` for SQL Express. Requires .NET 8+, Node.js 22+ and `sqlcmd` with Windows Authentication; use demo data only.
+
 ```powershell
 dotnet build QuanLyCuDan.sln
 node --test .validation/auth-client.test.cjs
