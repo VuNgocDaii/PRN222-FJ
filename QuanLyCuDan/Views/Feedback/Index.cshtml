@@ -1,0 +1,98 @@
+@model QuanLyCuDan.Models.FeedbackPageViewModel
+@{
+    ViewData["Title"] = "Phản ánh / Góp ý";
+    string CategoryName(string? category) => category switch { "ENVIRONMENT" => "Môi trường", "INFRASTRUCTURE" => "Hạ tầng", _ => "Khác" };
+}
+<div class="container py-4">
+    <div class="feedback-heading d-flex justify-content-between align-items-center mb-4 p-4 rounded-3">
+        <div><span class="feedback-eyebrow">CỔNG TIẾP NHẬN Ý KIẾN CƯ DÂN</span><h1 class="h3 mt-2 mb-1">Tiếp nhận phản ánh, kiến nghị</h1><p class="mb-0">Gửi ý kiến để ban quản lý tiếp nhận và phản hồi theo địa bàn của bạn.</p></div>
+        <span id="feedback-live-status" class="badge text-bg-secondary">Đang kết nối...</span>
+    </div>
+    @if (Model.Notice is not null) { <div class="alert alert-info">@Model.Notice</div> }
+    <div id="feedback-live-notice" class="alert alert-warning" hidden></div>
+    <div class="row g-4">
+        @if (Model.CanSubmit)
+        {
+            <div class="col-lg-4">
+                <section class="card shadow-sm"><div class="card-body">
+                    <h2 class="h5">Gửi phản ánh, kiến nghị</h2>
+                    <p class="text-muted small">Các trường có dấu <span class="text-danger">*</span> là bắt buộc. Nội dung chỉ bạn và cán bộ được phân quyền xem.</p>
+                    <form asp-controller="Feedback" asp-action="Create" method="post">
+                        @Html.AntiForgeryToken()
+                        <label class="form-label" for="subject">Tiêu đề <span class="text-danger">*</span></label><input class="form-control mb-3" id="subject" name="subject" maxlength="200" minlength="3" placeholder="Tóm tắt nội dung phản ánh" required />
+                        <label class="form-label" for="category">Lĩnh vực <span class="text-danger">*</span></label><select class="form-select mb-3" id="category" name="category"><option value="ENVIRONMENT">Môi trường</option><option value="INFRASTRUCTURE">Hạ tầng</option><option value="OTHER">Khác</option></select>
+                        <label class="form-label" for="body">Nội dung phản ánh <span class="text-danger">*</span></label><textarea class="form-control mb-3" id="body" name="body" rows="7" maxlength="4000" minlength="5" placeholder="Mô tả sự việc, địa điểm và đề xuất của bạn" required></textarea>
+                        <button class="btn btn-primary px-4" type="submit">Gửi phản ánh</button>
+                    </form>
+                </div></section>
+            </div>
+        }
+        <div class="@(Model.CanSubmit ? "col-lg-8" : "col-12")">
+            <div class="row g-3">
+                <div class="col-md-5"><section class="card shadow-sm"><div class="card-body">
+                    <h2 class="h5">@(Model.CanManage ? "Phản ánh được giao" : "Phản ánh của tôi")</h2>
+                    <p class="text-muted small">Theo dõi tình trạng tiếp nhận và nội dung phản hồi.</p>
+                    @if (Model.Items.Count == 0) { <p class="text-muted mb-0">Chưa có phản ánh nào.</p> }
+                    <div class="list-group">
+                    @foreach (var item in Model.Items)
+                    {
+                        <a class="list-group-item list-group-item-action @(Model.Selected?.Id == item.Id ? "active" : "")" asp-action="Index" asp-route-id="@item.Id">
+                            <strong>@item.Subject</strong><br /><small>@(item.Status switch { "PENDING" => "Chờ tiếp nhận", "PROCESSING" => "Đang xử lý", "RESPONDED" => "Đã phản hồi", "CLOSED" => "Đã đóng", "OUT_OF_SCOPE" => "Ngoài phạm vi", _ => item.Status }) · @item.SubmittedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                            @if (Model.CanManage) { <span class="d-block small">@item.ResidentName</span> }
+                        </a>
+                    }
+                    </div>
+                </div></section></div>
+                <div class="col-md-7"><section class="card shadow-sm"><div class="card-body">
+                    @if (Model.Selected is { } selected)
+                    {
+                        <h2 class="h5">@selected.Subject</h2><p class="text-muted small">Mã phản ánh: @selected.Code · @CategoryName(selected.Category) · @(selected.Status switch { "PENDING" => "Chờ tiếp nhận", "PROCESSING" => "Đang xử lý", "RESPONDED" => "Đã phản hồi", "CLOSED" => "Đã đóng", "OUT_OF_SCOPE" => "Ngoài phạm vi", _ => selected.Status })</p>
+                        @if (Model.CanManage) { <p class="small">Người gửi: @selected.ResidentName</p> }
+                        <div class="border rounded p-3 mb-3 bg-light">@selected.Body</div>
+                        <div id="feedback-thread" class="vstack gap-2 mb-3" aria-live="polite">
+                            @foreach (var message in selected.Messages)
+                            {
+                                <div class="border rounded p-2 @(message.Official ? "border-primary" : "")"><strong>@message.Author @(message.Official ? "· Cán bộ" : "")</strong><small class="text-muted float-end">@message.At.ToLocalTime().ToString("dd/MM HH:mm")</small><div style="white-space:pre-wrap">@message.Body</div></div>
+                            }
+                        </div>
+                        @if (Model.CanManage && selected.Status == "PENDING")
+                        {
+                            <form asp-action="Process" asp-route-id="@selected.Id" method="post" class="mb-3">@Html.AntiForgeryToken()<button class="btn btn-outline-primary" type="submit">Tiếp nhận xử lý</button></form>
+                        }
+                        @if ((Model.CanManage || Model.CanSubmit) && selected.Status is not ("CLOSED" or "OUT_OF_SCOPE"))
+                        {
+                            <form asp-action="Reply" asp-route-id="@selected.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <label class="form-label" for="reply">@(Model.CanManage ? "Phản hồi chính thức" : "Trao đổi thêm")</label>
+                                <textarea class="form-control mb-2" id="reply" name="body" maxlength="4000" rows="3" required></textarea>
+                                <button class="btn btn-primary" type="submit">Gửi phản hồi</button>
+                            </form>
+                        }
+                    }
+                    else { <p class="text-muted mb-0">Chọn một góp ý để xem nội dung trao đổi.</p> }
+                </div></section></div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/feedback.css" asp-append-version="true" />
+}
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="~/js/notification-client.js" asp-append-version="true"></script>
+    <script>
+        const liveStatus = document.getElementById("feedback-live-status");
+        notificationClient.onStatus((message, connected) => {
+            liveStatus.textContent = connected ? "Đang cập nhật trực tiếp" : message;
+            liveStatus.className = "badge " + (connected ? "text-bg-success" : "text-bg-secondary");
+        });
+        notificationClient.onFeedback((update) => {
+            const notice = document.getElementById("feedback-live-notice");
+            notice.textContent = update.message + " Tải lại trang để xem nội dung mới.";
+            notice.hidden = false;
+            if (Number(update.requestId) === @((Model.Selected?.Id ?? 0))) window.setTimeout(() => window.location.reload(), 1000);
+        });
+        notificationClient.start().catch(() => {});
+    </script>
+}
