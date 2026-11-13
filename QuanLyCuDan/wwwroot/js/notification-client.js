@@ -2,7 +2,7 @@
 window.notificationClient = (function () {
     let connection;
     let messageCallback = function () {};
-    let feedbackCallback = function () {};
+    const feedbackCallbacks = [];
     let statusCallback = function () {};
 
     async function start() {
@@ -23,7 +23,7 @@ window.notificationClient = (function () {
             messageCallback(message);
         });
         connection.on("FeedbackChanged", function (update) {
-            feedbackCallback(update);
+            feedbackCallbacks.forEach(function (callback) { callback(update); });
         });
 
         connection.onreconnecting(function () {
@@ -52,7 +52,7 @@ window.notificationClient = (function () {
     return {
         start: start,
         onMessage: function (callback) { messageCallback = callback; },
-        onFeedback: function (callback) { feedbackCallback = callback; },
+        onFeedback: function (callback) { feedbackCallbacks.push(callback); },
         onStatus: function (callback) { statusCallback = callback; }
     };
 })();

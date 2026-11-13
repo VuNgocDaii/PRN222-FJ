@@ -18,7 +18,7 @@
                 @if (User.Identity?.IsAuthenticated == true) {
                     @if (ViewData["CanUseResident"] is true) { <a href="/Resident">Cổng cư dân</a> }
                     <a href="/Account/Profile">Tài khoản</a>
-                    <a href="/Feedback" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Feedback" ? "page" : null)">Phản ánh / Góp ý</a>
+                    <a href="/Feedback" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Feedback" ? "page" : null)">Phản ánh / Góp ý @await Component.InvokeAsync("FeedbackCount")</a>
                     <form asp-controller="Account" asp-action="Logout" method="post"><button class="btn btn-outline-success" type="submit">Đăng xuất</button></form>
                 } else { <a href="/Account/Login">Đăng nhập</a> }
             </div>
@@ -28,6 +28,12 @@
     <footer class="standard-footer"><div class="container">KDC · Cổng thông tin cư dân <a asp-controller="Home" asp-action="Privacy">Quyền riêng tư</a></div></footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+        <script src="~/js/notification-client.js" asp-append-version="true"></script>
+        <script src="~/js/feedback-nav.js" asp-append-version="true"></script>
+    }
     <partial name="_SessionToken" />
     @await RenderSectionAsync("Scripts", required: false)
 </body>

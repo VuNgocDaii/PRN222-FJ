@@ -29,7 +29,7 @@
                 {
                     <a href="/Resident" class="nav-item">Cổng cư dân</a>
                 }
-                <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý</a>
+                <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý @await Component.InvokeAsync("FeedbackCount")</a>
                 @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read") || access.Contains("roles.assign"))
                 {
                     @if (access.Contains("accounts.read")) { <a asp-controller="Admin" asp-action="Index" asp-route-tab="users" data-tab="users" class="nav-item @(adminTab == "users" ? "active" : "")" aria-current="@(adminTab == "users" ? "page" : null)">Tài khoản</a> }
@@ -79,6 +79,9 @@
     </dialog>
     <script src="~/js/action-dialog.js" asp-append-version="true" defer></script>
     <script src="~/js/password-dialog.js" asp-append-version="true" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="~/js/notification-client.js" asp-append-version="true"></script>
+    <script src="~/js/feedback-nav.js" asp-append-version="true"></script>
     <script src="~/js/mvc-ui.js" asp-append-version="true" defer></script>
     <partial name="_SessionToken" />
     @await RenderSectionAsync("Scripts", required: false)
