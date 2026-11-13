@@ -84,6 +84,7 @@ public partial class AspNetUser
     }
 
     public string VerificationStatus { get; set; } = null!;
+    public string? RegistrationProfile { get; set; }
 
     public string? ReviewedByUserId
     {

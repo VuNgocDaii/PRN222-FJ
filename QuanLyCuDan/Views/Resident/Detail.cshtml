@@ -1,0 +1,16 @@
+﻿@model ResidentRequestDetailViewModel
+@{ Layout = "_PortalLayout"; ViewData["Title"] = Model.Request.Subject; var r = Model.Request; }
+<a href="/Resident/@(r.RequestKind == "FEEDBACK" ? "feedback" : "requests")" class="back-link">← Danh sách hồ sơ của bạn</a>
+<article class="panel reading-panel"><div class="section-heading"><p class="eyebrow">@r.Code</p><span class="badge status-@r.Status.ToLowerInvariant()">@PortalLabels.Text(r.Status)</span></div><h1>@r.Subject</h1><p class="muted">@PortalLabels.Text(r.Category ?? r.RequestType) · @r.AssignedGroup.Name</p><p class="muted small">Gửi lúc @r.SubmittedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm") (giờ Việt Nam)</p><div class="prose">@r.Body</div>
+@if (r.StartDate != null) { <p>Thời gian: @r.StartDate?.ToString("dd/MM/yyyy") @(r.EndDate != null ? "— " + r.EndDate.Value.ToString("dd/MM/yyyy") : "")</p> }
+@if (r.ProcessingNote != null) { <section class="processing-note"><h2>Kết quả / ý kiến xử lý</h2><div class="prose">@r.ProcessingNote</div><p class="muted small">@r.ProcessedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm")</p></section> }
+@if (Model.CanDownload) { <p><a href="/Resident/request/@r.Id/attachment">Tải giấy tờ: @r.AttachmentFileName</a></p> }
+@if (Model.CanUpload)
+{
+    <details class="processing-note"><summary>Bổ sung giấy tờ (không bắt buộc)</summary><form action="/Resident/request/@r.Id/attachment" method="post" enctype="multipart/form-data" asp-antiforgery="true"><input type="hidden" name="rowVersion" value="@Convert.ToBase64String(r.RowVersion)"><label>Giấy tờ PDF, JPEG hoặc PNG, tối đa 5 MB<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required></label><p class="muted small">Mỗi hồ sơ có một giấy tờ; chỉ được tải bởi tài khoản có quyền truy cập hồ sơ.</p><button type="submit" class="secondary">Tải giấy tờ lên</button></form></details>
+}
+@if (Model.CanCancel) { <form action="/Resident/request/@r.Id/cancel" method="post" asp-antiforgery="true" data-confirm="Bạn muốn hủy yêu cầu cư trú này?"><input type="hidden" name="rowVersion" value="@Convert.ToBase64String(r.RowVersion)"><p class="muted small">Bạn có thể hủy khi hồ sơ chưa được tiếp nhận.</p><button type="submit" class="danger">Hủy yêu cầu</button></form> }
+</article>
+<section class="panel reading-panel"><h2>Tiến độ & trao đổi</h2>@if (Model.Timeline.Count == 0) { <p class="muted">Chưa có cập nhật tiến độ.</p> }<ol class="timeline">@foreach (var item in Model.Timeline) { <li><span class="eyebrow">@(item.ActivityType == "MESSAGE" ? "TRAO ĐỔI" : "CẬP NHẬT TIẾN ĐỘ")</span><p>@(item.ToStatus != null ? PortalLabels.Text(item.ToStatus) : PortalLabels.Text(item.EventCode))</p>@if (item.ActivityType == "MESSAGE") { <div class="prose">@item.Body</div> }<time class="muted small">@item.OccurredAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</time></li> }</ol>
+@if (Model.CanReply) { <form action="/Resident/request/@r.Id/reply" method="post" asp-antiforgery="true"><input type="hidden" name="clientKey" value="@Guid.NewGuid().ToString("N")"><label>Gửi thêm trao đổi<textarea name="body" required maxlength="4000" rows="4" placeholder="Bổ sung thông tin cho cán bộ xử lý"></textarea></label><button type="submit" class="primary">Gửi trao đổi</button></form> }
+</section>

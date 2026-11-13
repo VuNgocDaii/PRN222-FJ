@@ -113,6 +113,7 @@ public abstract class BaseController(MyStockContext context) : Controller
             var userId = CurrentUserId(User);
             var access = (await Effective(userId).Where(x => x.ScopeType == "SYSTEM").Select(x => x.PermissionCode).ToListAsync()).ToHashSet();
             ViewData["Permissions"] = access;
+            ViewData["CanUseResident"] = await Effective(userId).AnyAsync(x => x.ScopeType == "SELF" && x.PermissionCode == "profile.self.read");
             ViewData["CanManageAnnouncements"] = await Effective(userId).AnyAsync(x => (x.ScopeType == "GROUP" || x.ScopeType == "AREA") && x.PermissionCode == "announcements.read");
             ViewData["CanReviewRegistrations"] = access.Contains("accounts.read") && access.Contains("accounts.update") && await IsAdmin(userId);
         }

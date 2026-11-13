@@ -7,9 +7,10 @@
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
 </head>
 <body class="login-page">
-    <main class="login-card">
-        <a class="auth-brand" asp-controller="Account" asp-action="Login"><span class="brand-mark">KDC</span><span>Quản lý cư dân</span></a>
+    <main class="login-card @(ViewData["WideAccount"] is true ? "registration-account-card" : "")">
+        <a class="auth-brand" asp-controller="Home" asp-action="Index"><span class="brand-mark">KDC</span><span>Quản lý cư dân</span></a>
         @RenderBody()
+        <p class="footnote"><a href="/">← Về trang công khai</a></p>
     </main>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

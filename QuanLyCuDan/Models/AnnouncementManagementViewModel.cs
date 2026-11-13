@@ -48,7 +48,6 @@ public sealed record AnnouncementHistoryItem(string EventCode, string? Actor, Da
 
 public static class AnnouncementLabels
 {
-    public static string Audience(string audience) => audience == "PUBLIC" ? "Công khai" : "Dành cho cư dân";
     public static string Review(string status) => status switch { "PENDING" => "Chờ duyệt", "APPROVED" => "Đã duyệt", "REJECTED" => "Từ chối", _ => "Nháp" };
     public static string Status(string status) => status switch { "PUBLISHED" => "Đã đăng", "UNPUBLISHED" => "Đã gỡ", _ => "Chưa đăng" };
     public static string Event(string code) => code switch {

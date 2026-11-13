@@ -1,0 +1,39 @@
+﻿@{
+    var residentPage = ViewContext.RouteData.Values["controller"]?.ToString() == "Resident";
+}
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewData["Title"] · Cổng thông tin cư dân</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/portal.css" asp-append-version="true">
+</head>
+<body class="portal-body">
+    <a href="#main-content" class="skip-link">Chuyển đến nội dung</a>
+    <header class="portal-header"><div class="portal-container header-inner">
+        <a href="/" class="portal-brand"><span class="brand-mark">KDC</span><span>Quản lý cư dân<small>Kết nối cộng đồng · Phục vụ cư dân</small></span></a>
+        <nav aria-label="Điều hướng chính">
+            <a href="/" class="@(!residentPage ? "selected" : "")">Trang công khai</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <a href="/Resident" class="@(residentPage ? "selected" : "")">Cổng cư dân</a>
+                <a href="/Account/Profile">Tài khoản</a>
+                <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary" type="submit">Đăng xuất</button></form>
+            }
+            else
+            {
+                <a href="/Account/Login">Đăng nhập</a><a class="button primary" href="/Account/Register">Đăng ký cư dân</a>
+            }
+        </nav>
+    </div></header>
+    <main id="main-content" class="portal-container portal-main">
+        @if (TempData["Success"] is string success) { <p class="message success" role="status">@success</p> }
+        @if (TempData["Error"] is string error) { <p class="message error" role="alert">@error</p> }
+        @RenderBody()
+    </main>
+    <footer class="portal-footer"><div class="portal-container"><strong>KDC · Cổng thông tin cư dân</strong><span>Thông tin minh bạch. Cộng đồng gắn kết.</span><a href="/Home/Privacy">Quyền riêng tư</a></div></footer>
+    <script src="~/js/portal.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

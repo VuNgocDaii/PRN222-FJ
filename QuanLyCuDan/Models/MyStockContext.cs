@@ -288,6 +288,7 @@ public partial class MyStockContext : DbContext
 
         modelBuilder.Entity<AspNetUser>(entity =>
         {
+            entity.Property(e => e.RegistrationProfile).HasMaxLength(4000);
             entity.HasIndex(e => e.NormalizedEmail, "EmailIndex");
 
             entity.HasIndex(e => e.ResidentId, "UX_Users_Resident")
