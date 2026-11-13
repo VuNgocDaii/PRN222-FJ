@@ -5,7 +5,7 @@ ASP.NET Core MVC application for resident management. Business logic lives in co
 ## Run locally
 
 1. Install the .NET 8 and .NET 9 SDKs. The main application targets .NET 8; the separate SignalRChat sample targets .NET 9.
-2. Create the COMPACT-2.0 database using `QuanLyCuDan.sql`. The script safely refuses to overwrite an incompatible existing database. For SQL Express, run `sqlcmd -S .\SQLEXPRESS -E -C -b -f 65001 -i QuanLyCuDan.sql`. The `Doc` directory is intentionally excluded from this repository.
+2. Create the COMPACT-2.0 database using `QuanLyCuDan.sql`. The script safely refuses to overwrite an incompatible existing database. Rerun this same script on an existing COMPACT-2.0 database to apply the registration-profile and announcement-review upgrades while preserving data and passwords. For SQL Express, run `sqlcmd -S .\SQLEXPRESS -E -C -b -f 65001 -i QuanLyCuDan.sql`. The `Doc` directory is intentionally excluded from this repository.
 3. Set `ConnectionStrings:MyStock` in a local `QuanLyCuDan/appsettings.Development.json`, or use the `ConnectionStrings__MyStock` environment variable. Local development settings are ignored by Git. The committed default uses Windows Authentication on localhost.
 4. Run `dotnet run --project QuanLyCuDan --launch-profile http` and open http://localhost:5044/ for the public portal, or http://localhost:5044/Resident for resident services.
 

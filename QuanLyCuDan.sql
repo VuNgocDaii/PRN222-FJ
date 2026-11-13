@@ -3,7 +3,7 @@
   8 BUSINESS TABLES + 14 AUTH/AUTHORIZATION TABLES + 1 VERSION TABLE = 23 TABLES.
   Database name: QuanLyCuDan.
   Run WHOLE file in SSMS or:
-    sqlcmd -S .\SQLEXPRESS -E -b -f 65001 -i QuanLyCuDan_CreateDb_Seed.sql
+    sqlcmd -S .\SQLEXPRESS -E -b -f 65001 -i QuanLyCuDan.sql
   Accounts: admin, canbo01, canbo02, thuphi01, dan01, dan02, dan03, pending01.
   All passwords: 12345678  All people, ID numbers and addresses are FICTIONAL.
 
@@ -23,8 +23,8 @@
   Use companion DemoSha256PasswordHasher.cs, NOT Identity's default PBKDF2 verifier.
   SHA256 is demo-only as requested; use a slow password KDF for real passwords.
 
-  Safe rerun: completed COMPACT-2.0 => no changes. Nonempty old/full/other database
-  => fail without DROP/DELETE. This is a new-install script, NOT an in-place migration.
+  Safe rerun: completed COMPACT-2.0 => apply additive upgrades in subsequent batches. Nonempty old/full/other database
+  => fail without DROP/DELETE. Existing COMPACT-2.0 data/passwords are preserved; other schemas require a separate migration.
   If QuanLyCuDan already has v1 tables, back up and plan migration separately.
   No usable sessions, refresh tokens, reset tokens or real attachments are seeded.
   Role source = UserRoleAssignments; standard AspNetUserRoles stays empty.
@@ -56,7 +56,7 @@ BEGIN TRY
         IF @Installed=1
         BEGIN
             COMMIT;
-            PRINT N'Compact v2.0 already installed. No data/passwords changed.';
+            PRINT N'Compact v2.0 already installed. Continuing with additive upgrades; data/passwords preserved.';
             RETURN;
         END;
     END;
@@ -652,6 +652,61 @@ SELECT UnitType,Code,Name,ParentUnitId FROM dbo.ResidentialUnits ORDER BY Id;
 SELECT RequestKind,Status,COUNT(*) AS Total FROM dbo.Requests GROUP BY RequestKind,Status;
 EXEC(N'SELECT * FROM dbo.vw_FeeBalances;');
 GO
+-- Additive upgrades run in separate batches even when the install batch returns.
+-- Keep these blocks in sync with the standalone scripts in database/.
+-- Source: database/20261109_RegistrationProfile.sql
+-- Additive upgrade for an existing COMPACT-2.0 database. No accounts or resident records are changed.
+USE [QuanLyCuDan];
+GO
+SET XACT_ABORT ON;
+SET QUOTED_IDENTIFIER ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS(SELECT 1 FROM dbo.SchemaVersions WHERE VersionCode='COMPACT-2.0')
+    THROW 51001, 'COMPACT-2.0 is required.', 1;
+IF COL_LENGTH('dbo.AspNetUsers', 'RegistrationProfile') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD RegistrationProfile nvarchar(4000) NULL;
+IF NOT EXISTS(SELECT 1 FROM dbo.SchemaVersions WHERE VersionCode='REGISTRATION-PROFILE')
+    INSERT dbo.SchemaVersions(VersionCode) VALUES('REGISTRATION-PROFILE');
+COMMIT;
+GO
+
+-- Source: database/20261109_AnnouncementReview.sql
+-- Idempotent upgrade. Existing publications remain visible; draft content is not auto-approved.
+USE [QuanLyCuDan];
+GO
+SET XACT_ABORT ON;
+SET QUOTED_IDENTIFIER ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS(SELECT 1 FROM dbo.SchemaVersions WHERE VersionCode='COMPACT-2.0')
+    THROW 51001, 'COMPACT-2.0 is required.', 1;
+IF COL_LENGTH('dbo.Announcements','ReviewStatus') IS NULL
+BEGIN
+    ALTER TABLE dbo.Announcements ADD
+        ReviewStatus varchar(15) NOT NULL CONSTRAINT DF_Announcements_ReviewStatus DEFAULT 'DRAFT',
+        SubmittedAt datetime2(3) NULL,
+        ReviewedByUserId nvarchar(450) NULL,
+        ReviewedAt datetime2(3) NULL,
+        ReviewNote nvarchar(1000) NULL;
+    EXEC(N'UPDATE dbo.Announcements SET ReviewStatus=''APPROVED'', SubmittedAt=PublishedAt,
+        ReviewedAt=PublishedAt, ReviewedByUserId=PublishedByUserId
+        WHERE Status IN (''PUBLISHED'',''UNPUBLISHED'') AND PublishedByUserId IS NOT NULL AND PublishedAt IS NOT NULL;');
+    EXEC(N'ALTER TABLE dbo.Announcements ADD CONSTRAINT CK_Announcements_ReviewStatus CHECK(ReviewStatus IN(''DRAFT'',''PENDING'',''APPROVED'',''REJECTED'')),
+        CONSTRAINT FK_Announcements_Reviewer FOREIGN KEY(ReviewedByUserId) REFERENCES dbo.AspNetUsers(Id);');
+END;
+IF NOT EXISTS(SELECT 1 FROM dbo.Permissions WHERE Code='announcements.approve')
+    INSERT dbo.Permissions(Code,Name,Module) VALUES('announcements.approve',N'Duyệt hoặc từ chối thông báo','ANNOUNCEMENTS');
+DECLARE @PermissionId int=(SELECT Id FROM dbo.Permissions WHERE Code='announcements.approve');
+INSERT dbo.PermissionAllowedScopes(PermissionId,ScopeType)
+    SELECT @PermissionId,s.ScopeType FROM (VALUES('GROUP'),('AREA')) s(ScopeType)
+    WHERE NOT EXISTS(SELECT 1 FROM dbo.PermissionAllowedScopes p WHERE p.PermissionId=@PermissionId AND p.ScopeType=s.ScopeType);
+INSERT dbo.RolePermissions(RoleId,PermissionId)
+    SELECT Id,@PermissionId FROM dbo.AspNetRoles r WHERE r.Name='OFFICER'
+    AND NOT EXISTS(SELECT 1 FROM dbo.RolePermissions p WHERE p.RoleId=r.Id AND p.PermissionId=@PermissionId);
+IF NOT EXISTS(SELECT 1 FROM dbo.SchemaVersions WHERE VersionCode='ANNOUNCEMENT-REVIEW')
+    INSERT dbo.SchemaVersions(VersionCode) VALUES('ANNOUNCEMENT-REVIEW');
+COMMIT;
+GO
+
 /* APPLICATION CONTRACT / DELIBERATE MVP LIMITS:
   - 8 business tables does not mean 8 total tables. Auth/permission/session tables
     remain separate; SchemaVersions is one installation metadata table.
