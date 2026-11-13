@@ -54,7 +54,10 @@ async function login(request, name) {
     const admin = browser();
     assert.equal(await login(admin, 'admin'), '/Admin');
     const adminHtml = await page(admin, '/Admin');
-    assert.match(adminHtml, /href="\/Users"/, 'Administration must link to MVC views');
+    assert.match(adminHtml, /data-tab="users"/, 'Administration must show the account tab');
+    assert.match(adminHtml, /id="user-rows"/, 'Administration must render the account table on the server');
+    await page(admin, '/Admin?tab=roles');
+    await page(admin, '/Admin?tab=permissions');
     for (const url of ['/Admin/Index', '/Account/Profile', '/Registrations', '/Registrations/Index', '/Management/overview', '/Users', '/Roles', '/Permissions', '/RoleAssignments']) await page(admin, url);
     assert.equal((await admin('/Management/announcements')).headers.get('location'), '/Announcements');
     assert.equal((await admin('/Account/Logout')).status, 405, 'Logout must require POST');

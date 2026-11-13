@@ -47,6 +47,8 @@ Do not commit SQL credentials, signing keys or real resident data. For a stable 
 
 ## Structure
 
+`/Admin` preserves the original account table, role-assignment panels and sidebar tabs for accounts, roles and permissions. Tab and selector changes are ordinary MVC GET requests; writes post to the existing controllers with antiforgery and a validated local return URL so success and validation messages stay on the selected admin tab. No API requests are used. Run `node .validation/admin-browser.cjs` against the local demo app to check the restored desktop/mobile UI and dialogs.
+
 - `QuanLyCuDan/Views`: Razor Views (`.cshtml`) rendered by controller actions with `View(model)`. Layouts and reusable partials live in `Views/Shared`. These views do not use `@page` or `.cshtml.cs` PageModels.
 - `QuanLyCuDan/Controllers`: MVC actions for public pages, accounts, administration, registration review, resident services, feedback and announcements. Account, role, permission and role-assignment management use server-rendered forms.
 - `BaseController` and `AuthControllerBase`: shared permission checks, cookie sign-in and token lifecycle.

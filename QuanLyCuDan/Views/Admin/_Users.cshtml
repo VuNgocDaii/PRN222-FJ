@@ -1,0 +1,49 @@
+@model AdminViewModel
+@{
+    var access = ViewData["Permissions"] as HashSet<string> ?? new();
+    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var returnUrl = Url.Action("Index", "Admin", new { tab = "users", search = Model.Search, page = Model.Page, userId = Model.SelectedUser?.Id });
+    string Verification(string status) => status switch { "PENDING" => "Chờ xác minh", "APPROVED" => "Đã xác minh", "REJECTED" => "Chưa được duyệt", "NOT_APPLICABLE" => "Không áp dụng", _ => "Chưa xác định" };
+}
+<div class="panel">
+    <div class="section-heading"><h2>Danh sách tài khoản</h2>
+        <form id="search-users" asp-controller="Admin" asp-action="Index" method="get" class="inline">
+            <input name="tab" type="hidden" value="users"><input name="search" value="@Model.Search" maxlength="200" placeholder="Tìm tên hoặc tài khoản" aria-label="Tìm tài khoản"><button class="secondary">Tìm kiếm</button>
+        </form>
+    </div>
+    <div class="table-wrap" tabindex="0" aria-label="Danh sách tài khoản, có thể cuộn ngang">
+        <table><thead><tr><th>Tài khoản</th><th>Họ và tên</th><th>Trạng thái</th><th>Xác minh</th><th>Thao tác</th></tr></thead><tbody id="user-rows">
+        @foreach (var account in Model.Users) {
+            <tr><td>@account.UserName</td><td>@account.FullName</td><td><span class="badge">@(!account.IsActive ? "Đã khóa" : account.LockoutEnd > DateTimeOffset.UtcNow ? "Tạm khóa đăng nhập" : "Hoạt động")</span></td><td>@Verification(account.VerificationStatus)</td>
+                <td><div class="admin-row-actions">
+                @if (access.Contains("accounts.update")) {
+                    <a class="secondary admin-button" asp-controller="Users" asp-action="Index" asp-route-search="@account.UserName" data-edit-user data-id="@account.Id" data-name="@account.FullName" data-active="@account.IsActive.ToString().ToLowerInvariant()" data-version="@Convert.ToBase64String(account.RowVersion)">Sửa tên</a>
+                }
+                @if (access.Contains("accounts.update") && access.Contains("accounts.lock") && account.Id != userId) {
+                    <form asp-controller="Users" asp-action="Update" asp-route-id="@account.Id" method="post" data-admin-confirm="@(account.IsActive ? "Khóa tài khoản này? Các phiên đăng nhập của tài khoản sẽ bị thu hồi." : "Mở khóa tài khoản này?")">
+                        <input name="returnUrl" type="hidden" value="@returnUrl"><input name="FullName" type="hidden" value="@account.FullName"><input name="IsActive" type="hidden" value="@(!account.IsActive ? "true" : "false")"><input name="RowVersion" type="hidden" value="@Convert.ToBase64String(account.RowVersion)"><button class="@(account.IsActive ? "danger" : "secondary")">@(account.IsActive ? "Khóa" : "Mở khóa")</button>
+                    </form>
+                }
+                @if (Model.CanAssign) { <a class="secondary admin-button" asp-controller="Admin" asp-action="Index" asp-route-tab="users" asp-route-userId="@account.Id" asp-route-search="@Model.Search" asp-route-page="@Model.Page" asp-fragment="assignments">Vai trò</a> }
+                </div></td>
+            </tr>
+        }
+        @if (Model.Users.Count == 0) { <tr><td colspan="5" class="empty">Không có tài khoản phù hợp.</td></tr> }
+        </tbody></table>
+    </div>
+    <nav class="pager" aria-label="Phân trang tài khoản">
+        @if (Model.Page > 1) { <a class="secondary admin-button" asp-controller="Admin" asp-action="Index" asp-route-tab="users" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search">Trước</a> }
+        else { <button class="secondary" type="button" disabled>Trước</button> }
+        <span id="page-info">Trang @Model.Page / @Math.Max(1, (Model.Total + 29) / 30) · @Model.Total tài khoản</span>
+        @if (Model.Page * 30 < Model.Total) { <a class="secondary admin-button" asp-controller="Admin" asp-action="Index" asp-route-tab="users" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search">Sau</a> }
+        else { <button class="secondary" type="button" disabled>Sau</button> }
+    </nav>
+</div>
+@if (access.Contains("accounts.create")) {
+<details class="panel admin-create-account"><summary>Tạo tài khoản</summary><form asp-controller="Users" asp-action="Create" method="post" class="form-grid"><input name="returnUrl" type="hidden" value="@returnUrl"><label>Tên đăng nhập<input name="UserName" required maxlength="256"></label><label>Họ tên<input name="FullName" required maxlength="150"></label><label>Mật khẩu<input name="Password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><button class="primary">Tạo tài khoản</button></form></details>
+}
+@if (Model.CanAssign) { <partial name="_Assignments" model="Model" /> }
+<dialog id="edit-user-dialog" class="password-dialog" aria-labelledby="edit-user-title">
+    <div class="section-heading"><h2 id="edit-user-title">Đổi tên tài khoản</h2><button type="button" class="secondary" data-close-user-dialog>Đóng</button></div>
+    <form asp-controller="Users" asp-action="Update" method="post"><input name="id" type="hidden"><input name="RowVersion" type="hidden"><input name="IsActive" type="hidden"><input name="returnUrl" type="hidden" value="@returnUrl"><label>Họ và tên<input name="FullName" required maxlength="150" autofocus></label><button class="primary">Lưu thay đổi</button></form>
+</dialog>

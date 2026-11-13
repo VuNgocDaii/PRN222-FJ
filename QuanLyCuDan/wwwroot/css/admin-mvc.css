@@ -1,0 +1,28 @@
+.admin-workspace .section-heading form { width: 430px; max-width: 100%; }
+.admin-workspace .section-heading form input { flex: 1 1 200px; }
+.admin-workspace .table-wrap { max-width: 100%; }
+.admin-workspace table th, .admin-workspace table td { vertical-align: middle; }
+.admin-workspace td { overflow-wrap: anywhere; }
+.admin-workspace td:first-child { min-width: 130px; }
+.admin-row-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 140px; }
+.admin-row-actions form { margin: 0; }
+.admin-row-actions button { margin: 0; }
+.admin-button { display: inline-block; padding: 7px 10px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: 600; }
+.admin-workspace > .panel > form[data-auto-submit] { max-width: 720px; margin-bottom: 22px; }
+.admin-workspace .form-grid { margin-top: 18px; }
+.admin-workspace .scope-choices { align-self: stretch; }
+.admin-workspace .scope-choices label { font-size: 13px; }
+.admin-workspace .pager { flex-wrap: wrap; }
+.admin-workspace .permission-grid label { min-height: 54px; }
+.admin-workspace .permission-grid input { margin-top: 3px; }
+.admin-form-help { grid-column: 1 / -1; margin: 0; }
+.admin-create-account summary { cursor: pointer; font-size: 15px; font-weight: 600; }
+.admin-workspace .form-grid > input[type=hidden] { display: none; }
+.admin-workspace .form-grid .inline { align-self: end; padding-bottom: 0; }
+@media(max-width:700px) {
+    .admin-workspace .section-heading form { width: 100%; max-width: none; }
+    .admin-workspace .section-heading form button { flex: 1 0 100%; }
+    .admin-workspace table { min-width: 650px; }
+    .admin-workspace .permission-grid label { align-items: flex-start; }
+    .admin-workspace .scope-choices { width: 100%; }
+}

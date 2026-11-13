@@ -1,5 +1,11 @@
 # Rà soát giao diện — 13/11/2026
 
+## Cập nhật giao diện admin theo bố cục cũ
+
+Đã khôi phục `/Admin` về ba mục Tài khoản / Vai trò / Quyền truy cập: bảng tài khoản có tìm kiếm, phân trang và dialog sửa tên; phần chọn tài khoản và gán/thu hồi vai trò; bộ chọn vai trò, form thông tin và lưới quyền; form thêm/sửa quyền và bảng danh mục quyền. Nhãn xác minh, trạng thái tạm khóa và các bảo vệ vai trò/quyền đang được sử dụng được giữ theo giao diện cũ. Dữ liệu render từ MVC; các form POST quay về đúng tab và hiển thị kết quả, không gọi API.
+
+Build và kiểm thử CRUD/validation/return URL đạt. Chrome kiểm tra các tab và trạng thái sửa quyền ở 1440, 390, 320 px; dialog sửa tên/xác nhận, phạm vi gán vai trò, JWT localStorage và không có request API. Ảnh đối chiếu lưu tại `QuanLyCuDan/.local/admin-restored`. Bộ kiểm tra: `.validation/admin-browser.cjs`.
+
 Đã kiểm tra 38 màn hình/trạng thái với tài khoản quản trị, cán bộ và cư dân trên Chrome ở độ rộng 1440, 390 và 320 px (114 lượt kiểm tra). Phạm vi gồm trang công khai, đăng nhập/đăng ký, tài khoản, quản trị tài khoản/vai trò/quyền, gán vai trò, ba trạng thái duyệt đăng ký, các mục Management, thông báo, góp ý và các mục trong cổng cư dân. Có kiểm tra thêm dialog đổi mật khẩu và dialog xem đăng ký.
 
 ## Các lỗi đã sửa
