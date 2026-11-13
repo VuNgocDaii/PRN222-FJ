@@ -200,6 +200,12 @@ public partial class MyStockContext : DbContext
 
         modelBuilder.Entity<Announcement>(entity =>
         {
+            entity.Property(e => e.ReviewStatus).HasMaxLength(15).IsUnicode(false).HasDefaultValue("DRAFT");
+            entity.Property(e => e.SubmittedAt).HasPrecision(3);
+            entity.Property(e => e.ReviewedAt).HasPrecision(3);
+            entity.Property(e => e.ReviewedByUserId).HasMaxLength(450);
+            entity.Property(e => e.ReviewNote).HasMaxLength(1000);
+            entity.HasOne<AspNetUser>().WithMany().HasForeignKey(e => e.ReviewedByUserId).OnDelete(DeleteBehavior.NoAction);
             entity.HasKey(e => e.Id).HasName("PK__Announce__3214EC07CED635DE");
 
             entity.HasIndex(e => new { e.Status, e.Audience, e.PublishedAt }, "IX_Announcements_Public");
@@ -282,6 +288,7 @@ public partial class MyStockContext : DbContext
 
         modelBuilder.Entity<AspNetUser>(entity =>
         {
+            entity.Property(e => e.RegistrationProfile).HasMaxLength(4000);
             entity.HasIndex(e => e.NormalizedEmail, "EmailIndex");
 
             entity.HasIndex(e => e.ResidentId, "UX_Users_Resident")

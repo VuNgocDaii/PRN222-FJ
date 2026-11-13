@@ -1,0 +1,4 @@
+﻿@model Announcement
+@{ Layout = "_PortalLayout"; ViewData["Title"] = Model.Title; }
+<a href="/#announcements" class="back-link">← Thông báo cộng đồng</a>
+<article class="panel reading-panel"><p class="eyebrow">@Model.ResidentialGroup.Name · THÔNG BÁO CÔNG KHAI</p><h1>@Model.Title</h1><p class="muted">Đăng ngày @Model.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") (giờ Việt Nam)</p><div class="prose">@Model.Body</div></article>

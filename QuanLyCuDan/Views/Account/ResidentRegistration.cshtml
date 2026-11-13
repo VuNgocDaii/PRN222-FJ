@@ -1,0 +1,11 @@
+@model QuanLyCuDan.Auth.RegistrationProfileInput
+@{ Layout = "_AccountLayout"; ViewData["Title"] = "Bổ sung thông tin cư dân"; ViewData["WideAccount"] = true; var groups = ViewData["RegistrationGroups"] as List<ResidentialUnit> ?? new(); }
+<h1>Bổ sung thông tin cư dân</h1>
+<p class="muted">Đăng ký hồ sơ cho <strong>@ViewData["ApplicantName"]</strong>. Sau khi gửi, tài khoản chuyển về chờ duyệt và bạn sẽ đăng xuất để ban quản lý xác minh.</p>
+<form asp-action="ResidentRegistration" method="post">
+    <div asp-validation-summary="All" class="validation" role="alert"></div>
+    <input type="hidden" name="rowVersion" value="@ViewData["ApplicantVersion"]">
+    <partial name="_RegistrationProfileFields" model="Model" />
+    <button class="primary wide" type="submit" disabled="@(groups.Count == 0)">Gửi thông tin chờ phê duyệt</button>
+</form>
+<p class="footnote"><a href="/Account/Profile">← Về tài khoản</a></p>

@@ -10,6 +10,7 @@ public sealed class ManagementController(MyStockContext context) : BaseControlle
     [HttpGet("/Management/{module=overview}")]
     public IActionResult Index(string module)
     {
+        if (module == "announcements") return RedirectToAction("Index", "Announcements");
         var selected = ManagementModule.All.FirstOrDefault(x => x.Key == module);
         if (selected is null) return NotFound();
         return View(selected);

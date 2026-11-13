@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>QuanLyCuDan-local-21c8ffcc-0359-4bf5-9b22-e2db169c779f</UserSecretsId>
     <DefaultItemExcludes>$(DefaultItemExcludes);.local/**</DefaultItemExcludes>
   </PropertyGroup>
 

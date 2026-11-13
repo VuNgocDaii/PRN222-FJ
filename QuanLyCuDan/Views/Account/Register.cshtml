@@ -1,15 +1,22 @@
-@model QuanLyCuDan.Auth.RegisterInput
-@{ Layout = "_AccountLayout"; ViewData["Title"] = "Đăng ký cư dân"; }
+﻿@model QuanLyCuDan.Auth.RegisterInput
+@{ Layout = "_AccountLayout"; ViewData["Title"] = "Đăng ký cư dân"; ViewData["WideAccount"] = true; var groups = ViewData["RegistrationGroups"] as List<ResidentialUnit> ?? new(); }
 <h1>Đăng ký cư dân</h1>
-        <p class="muted">Tài khoản cần được phê duyệt sau khi đăng ký.</p>
-        <form asp-controller="Account" asp-action="Register" method="post">
-            <div asp-validation-summary="All" class="validation" role="alert"></div>
-            <label>Họ và tên<input asp-for="FullName" autocomplete="name" required maxlength="150"></label>
-            <label>Số điện thoại<input asp-for="PhoneNumber" type="tel" autocomplete="tel" required maxlength="20"></label>
-            <label>Tên đăng nhập<input asp-for="UserName" autocomplete="username" required minlength="3" maxlength="50"></label>
-            <label>Mật khẩu<input name="Password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
-            <label>Nhập lại mật khẩu<input name="ConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
-            <button class="primary wide" type="submit">Gửi đăng ký</button>
-        </form>
-        <p class="footnote">Đã có tài khoản? <a asp-controller="Account" asp-action="Login">Đăng nhập</a></p>
-    
+<p class="muted">Điền thông tin cá nhân và nơi cư trú để ban quản lý xác minh. Hồ sơ và quyền cư dân được cấp sau khi phê duyệt.</p>
+<form asp-controller="Account" asp-action="Register" method="post">
+    <div asp-validation-summary="All" class="validation" role="alert"></div>
+    <h2>Thông tin cư dân</h2>
+    <div class="registration-fields">
+        <label>Họ và tên<input asp-for="FullName" autocomplete="name" required maxlength="150"></label>
+        <label>Số điện thoại<input asp-for="PhoneNumber" type="tel" autocomplete="tel" required maxlength="20"></label>
+    </div>
+    <partial name="_RegistrationProfileFields" model="Model" />
+    <h2>Thông tin tài khoản</h2>
+    <label>Tên đăng nhập<input asp-for="UserName" autocomplete="username" required minlength="3" maxlength="50"></label>
+    <div class="registration-fields">
+        <label>Mật khẩu<input name="Password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
+        <label>Nhập lại mật khẩu<input name="ConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
+    </div>
+    <button class="primary wide" type="submit" disabled="@(groups.Count == 0)">Gửi đăng ký chờ duyệt</button>
+    @if (groups.Count == 0) { <p class="validation">Chưa có tổ dân phố đang hoạt động để tiếp nhận đăng ký.</p> }
+</form>
+<p class="footnote">Đã có tài khoản? <a asp-controller="Account" asp-action="Login">Đăng nhập</a></p>
