@@ -15,7 +15,7 @@ public sealed class RoleAssignmentsController(MyStockContext context) : BaseCont
     {
         await RequirePermission(User, "roles.assign");
         ViewData["Accounts"] = await db.AspNetUsers.AsNoTracking().OrderBy(u => u.UserName).ToListAsync();
-        ViewData["Roles"] = await db.AspNetRoles.AsNoTracking().Where(r => r.IsActive).OrderBy(r => r.Name).ToListAsync();
+        ViewData["Roles"] = await db.AspNetRoles.AsNoTracking().Include(r => r.Permissions).ThenInclude(p => p.PermissionAllowedScopes).Where(r => r.IsActive).OrderBy(r => r.Name).ToListAsync();
         ViewData["Units"] = await db.ResidentialUnits.AsNoTracking().Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
         ViewData["UserId"] = userId;
         return View("Index", await db.UserRoleAssignments.AsNoTracking().Include(a => a.Role).Where(a => a.UserId == userId).OrderByDescending(a => a.AssignedAt).Take(200).ToListAsync());

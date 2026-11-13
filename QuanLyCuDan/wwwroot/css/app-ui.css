@@ -1,0 +1,42 @@
+/* Shared controls and responsive fixes for the MVC views. */
+input[type="checkbox"], input[type="radio"] {
+    width: 18px; height: 18px; min-height: 18px; padding: 0; margin: 0;
+    flex: 0 0 18px; accent-color: var(--green);
+}
+label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) {
+    flex-direction: row; align-items: center; min-height: 40px; gap: 10px;
+    line-height: 1.5; overflow-wrap: anywhere;
+}
+.inline { flex-wrap: wrap; align-items: center; }
+.inline > * { min-width: 0; }
+.inline label { flex: 1 1 200px; margin-bottom: 0; }
+.primary.nav-item { color: #fff; background: var(--green); }
+.primary.nav-item:hover { color: #fff; background: #124e3d; }
+.crud-panel { overflow-wrap: anywhere; }
+.crud-panel > form { max-width: 780px; }
+.crud-panel fieldset { display: flex; flex-wrap: wrap; gap: 6px 24px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 18px; }
+.crud-panel legend { font-size: 13px; padding: 0 6px; font-weight: 600; }
+.crud-panel fieldset label { margin: 0; }
+.crud-panel details summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+.crud-panel details > form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+.crud-panel details > form label { margin: 0; padding: 8px; border-radius: 6px; background: #f5f8f6; }
+.crud-panel details > form button { justify-self: start; grid-column: 1 / -1; }
+.crud-panel h2 { overflow-wrap: anywhere; }
+.sidebar nav .active { background: #e6f1eb; color: var(--green); font-weight: 700; }
+.skip-link { position: fixed; top: -80px; left: 16px; z-index: 1000; background: #fff; color: var(--green); padding: 12px 16px; border: 2px solid var(--green); border-radius: 8px; }
+.skip-link:focus { top: 12px; }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.form-help { color: #687a70; font-size: 13px; line-height: 1.6; }
+.form-help.error { color: #a33522; }
+.role-assignment-dates { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+@media (max-width: 700px) {
+    .sidebar nav { overflow-x: visible; }
+    .sidebar .nav-item { white-space: normal; }
+    .workspace h1 { overflow-wrap: anywhere; }
+    .page-header { flex-wrap: wrap; gap: 12px; }
+    .crud-panel details > form, .role-assignment-dates { grid-template-columns: 1fr; }
+    .crud-panel > form.inline { align-items: stretch; }
+    .crud-panel > form.inline button { width: 100%; }
+    .panel .inline { gap: 10px; }
+    .panel nav.inline > a { flex: 1 1 135px; text-align: center; }
+}

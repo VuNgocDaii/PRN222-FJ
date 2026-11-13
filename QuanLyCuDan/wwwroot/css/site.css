@@ -20,3 +20,18 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+.standard-layout { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: #f4f7f5; color: #20332d; font-family: "Segoe UI", sans-serif; }
+.standard-header { background: #fff; border-bottom: 1px solid #dce5df; }
+.standard-nav, .standard-links { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.standard-nav { padding-top: 20px; padding-bottom: 20px; justify-content: space-between; }
+.app-brand { display: flex; align-items: center; gap: 12px; color: #20332d; font-weight: 700; text-decoration: none; }
+.brand-mark { display: grid; place-items: center; background: #17664f; color: #fff; width: 42px; height: 42px; border-radius: 12px; font-size: 13px; }
+.standard-links a { color: #17664f; text-decoration: none; padding: 10px 0; font-size: 14px; }
+.standard-links a[aria-current="page"] { font-weight: 700; text-decoration: underline; text-underline-offset: 5px; }
+.standard-main { flex: 1; padding-top: 24px; padding-bottom: 32px; }
+.standard-footer { background: #fff; border-top: 1px solid #dce5df; padding: 24px 0; font-size: 13px; }
+.standard-footer a { color: #17664f; float: right; }
+.skip-link { position: fixed; left: 16px; top: -80px; z-index: 1000; background: #fff; color: #17664f; padding: 12px 16px; border: 2px solid #17664f; border-radius: 8px; }
+.skip-link:focus { top: 12px; }
+@media(max-width:575px) { .standard-links { gap: 8px 16px; } .standard-nav { gap: 12px; } .standard-footer a { float: none; display: block; margin-top: 10px; } }

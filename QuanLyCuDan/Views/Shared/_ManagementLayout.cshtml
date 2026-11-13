@@ -1,6 +1,5 @@
 @{
     var access = ViewData["Permissions"] as HashSet<string> ?? new HashSet<string>();
-    bool isAdminPage = ViewData["AdminTabs"] is true;
     bool canReview = ViewData["CanReviewRegistrations"] is true;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
 }
@@ -11,8 +10,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>@ViewData["Title"] · Quản lý cư dân</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/app-ui.css" asp-append-version="true">
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Chuyển đến nội dung</a>
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" href="/Account/Profile"><span class="brand-mark">KDC</span><strong>Quản lý cư dân</strong></a>
@@ -27,12 +28,12 @@
                     <a href="/Resident" class="nav-item">Cổng cư dân</a>
                 }
                 <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý</a>
-                @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read"))
+                @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read") || access.Contains("roles.assign"))
                 {
-                    @if (access.Contains("accounts.read")) { <a href="/Users" class="nav-item">Tài khoản</a> }
-                    @if (access.Contains("roles.read")) { <a href="/Roles" class="nav-item">Vai trò</a> }
-                    @if (access.Contains("permissions.read")) { <a href="/Permissions" class="nav-item">Quyền truy cập</a> }
-                    @if (access.Contains("roles.assign")) { <a href="/RoleAssignments" class="nav-item">Gán vai trò</a> }
+                    @if (access.Contains("accounts.read")) { <a href="/Users" class="nav-item @(controller == "Users" ? "active" : "")" aria-current="@(controller == "Users" ? "page" : null)">Tài khoản</a> }
+                    @if (access.Contains("roles.read")) { <a href="/Roles" class="nav-item @(controller == "Roles" ? "active" : "")" aria-current="@(controller == "Roles" ? "page" : null)">Vai trò</a> }
+                    @if (access.Contains("permissions.read")) { <a href="/Permissions" class="nav-item @(controller == "Permissions" ? "active" : "")" aria-current="@(controller == "Permissions" ? "page" : null)">Quyền truy cập</a> }
+                    @if (access.Contains("roles.assign")) { <a href="/RoleAssignments" class="nav-item @(controller == "RoleAssignments" ? "active" : "")" aria-current="@(controller == "RoleAssignments" ? "page" : null)">Gán vai trò</a> }
                 }
                 @if (canReview)
                 {
@@ -47,7 +48,7 @@
                 <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary wide" type="submit">Đăng xuất</button></form>
             </div>
         </aside>
-        <main class="workspace">@if (TempData["Message"] is string message) { <p class="message success">@message</p> }<div asp-validation-summary="All" class="validation" role="alert"></div>@RenderBody()</main>
+        <main id="main-content" class="workspace">@if (controller != "Registrations" && TempData["Message"] is string message) { <p class="message success">@message</p> }<div asp-validation-summary="All" class="validation" role="alert"></div>@RenderBody()</main>
     </div>
     <dialog id="password-dialog" class="password-dialog" aria-labelledby="password-dialog-title">
         <div class="section-heading">
@@ -76,6 +77,7 @@
     </dialog>
     <script src="~/js/action-dialog.js" asp-append-version="true" defer></script>
     <script src="~/js/password-dialog.js" asp-append-version="true" defer></script>
+    <script src="~/js/mvc-ui.js" asp-append-version="true" defer></script>
     <partial name="_SessionToken" />
     @await RenderSectionAsync("Scripts", required: false)
 </body>

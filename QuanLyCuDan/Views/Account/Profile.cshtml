@@ -10,11 +10,11 @@
 }
 <section class="panel narrow">
     <h2>Đổi mật khẩu</h2>
-    <form asp-action="ChangePassword" method="post">
+    <form asp-action="ChangePassword" method="post" data-password-form>
         <label>Mật khẩu hiện tại<input name="CurrentPassword" type="password" required autocomplete="current-password"></label>
         <label>Mật khẩu mới<input name="NewPassword" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
         <label>Xác nhận mật khẩu mới<input name="confirmPassword" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
         <button class="primary">Đổi mật khẩu</button>
     </form>
-    <p class="muted">Chọn “Thay đổi mật khẩu” cạnh tên tài khoản để mở cửa sổ đổi mật khẩu.</p>
+    <p class="muted small">Sau khi đổi mật khẩu thành công, bạn cần đăng nhập lại trên các thiết bị.</p>
 </section>
