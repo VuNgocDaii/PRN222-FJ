@@ -19,12 +19,12 @@
     <p class="muted">Chọn tài khoản để xem các vai trò hiện có hoặc gán vai trò mới.</p>
 } else {
 <section class="panel crud-panel">
-    <h2>Gán vai trò mới</h2>
+    <h2>Gán vai trò mới</h2><p>Mỗi tài khoản một vai trò. Thu hồi vai trò hiện tại trước khi gán vai trò khác.</p>
     <form asp-action="Assign" method="post" data-role-assignment>
         <input name="userId" type="hidden" value="@selectedUser">
         <label>Vai trò<select name="RoleId" required>
         @foreach (var role in roles) {
-            var allowed = scopes.Where(s => role.Permissions.Count > 0 && role.Permissions.All(p => p.PermissionAllowedScopes.Any(a => a.ScopeType == s)));
+            var allowed = scopes.Where(s => QuanLyCuDan.Services.RoleScopeRules.Supports(role.Permissions, s));
             <option value="@role.Id" data-scopes="@string.Join(",", allowed)">@role.Name — @role.DisplayName</option>
         }
         </select></label>
@@ -33,6 +33,7 @@
         <label>Địa bàn (chỉ AREA/GROUP)<select name="UnitId"><option value="">Chọn địa bàn</option>
         @foreach (var unit in units) { <option value="@unit.Id" data-type="@unit.UnitType">@unit.UnitType — @unit.Name</option> }
         </select></label>
+        <label>Tổ chức quản lý (nếu có)<select name="OrganizationId"><option value="">Toàn địa bàn</option>@foreach (var org in ((List<Organization>)ViewData["Organizations"]!)) { <option value="@org.Id">@org.Name</option> }</select></label>
         <div class="role-assignment-dates">
             <label>Hiệu lực từ<input name="ValidFrom" type="datetime-local" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required></label>
             <label>Hiệu lực đến (không bắt buộc)<input name="ValidUntil" type="datetime-local"></label>

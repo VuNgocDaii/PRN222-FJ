@@ -6,7 +6,7 @@ const base = process.env.AUTH_TEST_URL || 'http://127.0.0.1:5099', server = proc
 if (!server) throw Error('Set PORTAL_TEST_SQL_SERVER to the local demo server.');
 const name = 'mvc_' + randomUUID().replaceAll('-', '');
 function sql(query) {
-    const r = spawnSync('sqlcmd', ['-S', server, '-d', 'QuanLyCuDan', '-E', '-C', '-I', '-b', '-h', '-1', '-y', '4000', '-w', '65535', '-Q', 'SET NOCOUNT ON; ' + query], { encoding: 'utf8' });
+    const r = spawnSync('sqlcmd', ['-S', server, '-d', process.env.PORTAL_TEST_DATABASE || 'QuanLyCuDan', '-E', '-C', '-I', '-b', '-h', '-1', '-y', '4000', '-w', '65535', '-Q', 'SET NOCOUNT ON; ' + query], { encoding: 'utf8' });
     if (r.status !== 0) throw Error(r.stderr || r.stdout); return r.stdout.trim();
 }
 const row = q => JSON.parse(sql(q + ' FOR JSON PATH, WITHOUT_ARRAY_WRAPPER'));
@@ -54,6 +54,8 @@ function version(h, id) { const f = [...h.matchAll(/<form\b[\s\S]*?<\/form>/g)].
     assert.equal(sql(`SELECT Name FROM Permissions WHERE Id=${permission.Id}`), 'Changed Permission');
     role = row(`SELECT Id,ConcurrencyStamp FROM AspNetRoles WHERE Id='${role.Id}'`);
     assert.equal((await post(admin, '/Roles/Permissions/' + role.Id, { PermissionIds: [permission.Id], ConcurrencyStamp: role.ConcurrencyStamp })).status, 302);
+    const basic = row(`SELECT Id,RowVersion FROM UserRoleAssignments WHERE UserId='${user.Id}' AND RevokedAt IS NULL`);
+    assert.equal((await post(admin, '/RoleAssignments/Revoke/' + basic.Id, { userId: user.Id, Reason: 'Replace basic role for single-role test', RowVersion: basic.RowVersion })).status, 302);
     assert.equal((await post(admin, '/RoleAssignments/Assign', { userId: user.Id, RoleId: role.Id, ScopeType: 'SELF', ValidFrom: new Date(Date.now() - 60000).toISOString() })).status, 302);
     const assignment = row(`SELECT Id,RowVersion FROM UserRoleAssignments WHERE UserId='${user.Id}' AND RoleId='${role.Id}'`);
     assert.equal((await post(admin, '/RoleAssignments/Revoke/' + assignment.Id, { userId: user.Id, Reason: 'MVC test', RowVersion: assignment.RowVersion })).status, 302);

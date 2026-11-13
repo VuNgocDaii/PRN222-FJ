@@ -2,10 +2,10 @@
 namespace QuanLyCuDan.Models;
 public sealed class PublicHomeViewModel
 {
-    public List<Announcement> Announcements { get; set; } = [];
     public List<ResidentialUnit> Groups { get; set; } = [];
-    public string? Search { get; set; }
     public long? GroupId { get; set; }
+    public List<Announcement> Announcements { get; set; } = [];
+    public string? Search { get; set; }
     public int Page { get; set; } = 1;
     public int Total { get; set; }
 }
@@ -65,7 +65,7 @@ public static class PortalLabels
         "MOVE_IN" => "Chuyển đến", "MOVE_OUT" => "Chuyển đi", "TEMPORARY_RESIDENCE" => "Đăng ký tạm trú",
         "TEMPORARY_ABSENCE" => "Đăng ký tạm vắng", "ADD_MEMBER" => "Đăng ký vào hộ", "CHANGE_HEAD" => "Thay đổi chủ hộ",
         "FEEDBACK" => "Phản ánh", "ENVIRONMENT" => "Môi trường", "INFRASTRUCTURE" => "Hạ tầng", "OTHER" => "Khác",
-        "MALE" => "Nam", "FEMALE" => "Nữ", "PUBLIC" => "Công khai", "RESIDENTS" => "Dành cho cư dân",
+        "MALE" => "Nam", "FEMALE" => "Nữ", "PUBLIC" => "Công khai", "RESIDENTS" => "Dành cho cư dân", "ORGANIZATION" => "Nội bộ tổ chức",
         "REQUIRED" => "Bắt buộc", "VOLUNTARY" => "Tự nguyện", "CASH" => "Tiền mặt", "TRANSFER" => "Chuyển khoản",
         "SUBMITTED" => "Đã gửi", "RESIDENT_CANCELLED" => "Cư dân hủy yêu cầu", "RESIDENT_MESSAGE" => "Trao đổi của cư dân",
         "FEEDBACK_REPLIED" => "Phản ánh của bạn đã được trả lời", "ANNOUNCEMENT_PUBLISHED" => "Tổ dân phố có thông báo mới",

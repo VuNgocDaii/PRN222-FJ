@@ -1,0 +1,30 @@
+@model OrganizationPage
+@{ Layout = "_ManagementLayout"; ViewData["Title"] = "Tổ chức trong thôn"; }
+<header class="page-header"><h1>Tổ chức trong thôn</h1></header>
+<section class="panel">
+    <form method="get" asp-action="Index"><label>Tổ chức<select name="id">@foreach (var o in Model.Organizations) { <option value="@o.Id" selected="@(o.Id == Model.SelectedId)">@o.Name — @o.ResidentialGroup.Name</option> }</select></label><button class="primary">Xem thành viên</button></form>
+</section>
+@if (Model.CanManage)
+{
+    <section class="panel"><h2>Thêm tổ chức</h2><form asp-action="Create" method="post">
+        <label>Mã tổ chức<input name="Code" required maxlength="50" pattern="[A-Za-z0-9_-]+"></label>
+        <label>Tên tổ chức<input name="Name" required maxlength="200"></label>
+        <label>Thôn<select name="ResidentialGroupId" required>@foreach (var g in Model.Groups) { <option value="@g.Id">@g.Name</option> }</select></label>
+        <button class="primary">Tạo tổ chức</button>
+    </form></section>
+}
+@if (Model.SelectedId != null)
+{
+    <section class="panel"><h2>Thành viên hiện tại</h2>
+        @if (Model.Members.Count == 0) { <p>Chưa có thành viên.</p> }
+        <table><thead><tr><th>Họ tên</th><th>Tham gia từ</th><th></th></tr></thead><tbody>
+        @foreach (var m in Model.Members) { <tr><td>@m.Resident.FullName</td><td>@m.JoinedAt.AddHours(7).ToString("dd/MM/yyyy")</td><td>
+            @if (Model.CanManageMembers) { <form asp-action="Member" method="post"><input type="hidden" name="id" value="@m.OrganizationId"><input type="hidden" name="residentId" value="@m.ResidentId"><input type="hidden" name="active" value="false"><input type="hidden" name="rowVersion" value="@Convert.ToBase64String(m.RowVersion)"><button class="danger">Kết thúc tham gia</button></form> }
+        </td></tr> }
+        </tbody></table>
+    </section>
+    @if (Model.CanManageMembers)
+    {
+        <section class="panel"><h2>Thêm thành viên</h2><form asp-action="Member" method="post"><input type="hidden" name="id" value="@Model.SelectedId"><input type="hidden" name="active" value="true"><label>Cư dân trong thôn<select name="residentId" required>@foreach (var r in Model.Candidates) { <option value="@r.Id">@r.FullName — Hồ sơ #@r.Id</option> }</select></label><button class="primary">Thêm thành viên</button></form></section>
+    }
+}

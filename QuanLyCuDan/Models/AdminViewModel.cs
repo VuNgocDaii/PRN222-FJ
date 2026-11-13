@@ -9,6 +9,7 @@ public sealed class AdminViewModel
     public List<AspNetUser> Users { get; set; } = new();
     public List<AspNetRole> Roles { get; set; } = new();
     public List<Permission> Permissions { get; set; } = new();
+    public List<Organization> Organizations { get; set; } = [];
     public List<ResidentialUnit> Units { get; set; } = new();
     public List<UserRoleAssignment> Assignments { get; set; } = new();
     public AspNetUser? SelectedUser { get; set; }

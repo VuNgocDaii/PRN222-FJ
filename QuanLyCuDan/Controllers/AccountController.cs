@@ -1,30 +1,30 @@
+using QuanLyCuDan.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace QuanLyCuDan.Controllers;
-public sealed class AccountController(MyStockContext context) : AuthControllerBase(context)
+public sealed class AccountController(AccountService accounts, AuthService authentication, NavigationService navigation, PersistenceSession persistence) : AuthControllerBase(authentication, navigation, persistence)
 {
     [AllowAnonymous, HttpGet]
     public async Task<IActionResult> Register()
     {
-        await RegistrationGroups();
+        ViewData["RegistrationGroups"] = await accounts.GetGroupsAsync();
         return View(new RegisterInput());
     }
 
     [AllowAnonymous, HttpPost, ValidateAntiForgeryToken, EnableRateLimiting("login")]
     public async Task<IActionResult> Register(RegisterInput input)
     {
-        await RegistrationGroups();
+        ViewData["RegistrationGroups"] = await accounts.GetGroupsAsync();
         if (!ModelState.IsValid)
             return View(input);
         try
         {
-            await RegisterCore(input);
+            await accounts.RegisterAsync(input);
             TempData["RegistrationMessage"] = "Đăng ký thành công. Tài khoản đang chờ quản trị viên phê duyệt.";
             return RedirectToAction(nameof(Login));
         }
@@ -54,12 +54,9 @@ public sealed class AccountController(MyStockContext context) : AuthControllerBa
             return View(input);
         try
         {
-            var result = await LoginCore(input, Request.Headers.UserAgent.ToString());
+            var result = await Authentication.LoginAsync(input, Request.Headers.UserAgent.ToString());
             await SignInCore(HttpContext, result.User, result.Session);
-            var isManager = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(Effective(result.User.Id), x => x.PermissionCode == "accounts.read" && x.ScopeType == "SYSTEM");
-            var isResident = await Effective(result.User.Id).AnyAsync(x => x.PermissionCode == "profile.self.read" && x.ScopeType == "SELF");
-            var hasAnnouncements = await Effective(result.User.Id).AnyAsync(x => x.PermissionCode == "announcements.read" && (x.ScopeType == "GROUP" || x.ScopeType == "AREA"));
-            return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : isManager ? "/Admin" : isResident ? "/Resident" : hasAnnouncements ? "/Announcements" : "/Account/Profile");
+            return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : await Authentication.GetDestinationAsync(result.User.Id));
         }
         catch (AppFault e)
         {
@@ -78,38 +75,30 @@ public sealed class AccountController(MyStockContext context) : AuthControllerBa
     [Authorize(AuthenticationSchemes = "Cookies"), HttpGet]
     public async Task<IActionResult> Profile()
     {
-        var user = await db.AspNetUsers.AsNoTracking().SingleAsync(u => u.Id == CurrentUserId(User));
-        ViewData["CanSubmitResidentProfile"] = user.ResidentId == null && user.VerificationStatus == "APPROVED" && !await IsAdmin(user.Id);
+        ViewData["CanSubmitResidentProfile"] = await accounts.CanSubmitProfileAsync(User);
         return View("Profile");
     }
 
     [Authorize(AuthenticationSchemes = "Cookies"), HttpGet]
     public async Task<IActionResult> ResidentRegistration()
     {
-        var user = await ApplicantAccount();
-        await RegistrationGroups();
-        ViewData["ApplicantName"] = user.FullName;
-        ViewData["ApplicantVersion"] = Convert.ToBase64String(user.RowVersion);
+        var user = await accounts.GetApplicantAsync(User);
+        await SetApplicantViewDataAsync(user);
         return View(RegistrationProfileInput.Read(user.RegistrationProfile) ?? new RegistrationProfileInput());
     }
 
     [Authorize(AuthenticationSchemes = "Cookies"), HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> ResidentRegistration(RegistrationProfileInput input, string rowVersion)
     {
-        var user = await ApplicantAccount();
-        await RegistrationGroups();
-        ViewData["ApplicantName"] = user.FullName;
-        ViewData["ApplicantVersion"] = Convert.ToBase64String(user.RowVersion);
-        if (!ModelState.IsValid) return View(input);
-        if (!await db.ResidentialUnits.AnyAsync(g => g.Id == input.GroupId && g.IsActive && g.UnitType == "GROUP" && g.ParentUnit != null && g.ParentUnit.IsActive && g.ParentUnit.UnitType == "AREA"))
-        { ModelState.AddModelError("", "Chọn tổ dân phố đang hoạt động."); return View(input); }
-        SetVersion(user, rowVersion);
-        user.RegistrationProfile = System.Text.Json.JsonSerializer.Serialize(input);
-        user.VerificationStatus = "PENDING";
-        user.ReviewedByUserId = null; user.ReviewedAt = null; user.RejectionReason = null;
-        user.PermissionVersion++;
-        Audit(user.Id, "REGISTRATION_PROFILE_SUBMITTED", "User", user.Id);
-        await db.SaveChangesAsync();
+        var user = await accounts.GetApplicantAsync(User);
+        await SetApplicantViewDataAsync(user);
+        if (!ModelState.IsValid)
+            return View(input);
+        try
+        {
+            await accounts.SubmitProfileAsync(User, input, rowVersion);
+        }
+        catch (AppFault error) when (error.Status == 400) { ModelState.AddModelError("", error.Message); return View(input); }
         await LogoutCore(HttpContext);
         TempData["RegistrationMessage"] = "Đã gửi thông tin cư dân. Vui lòng chờ quản trị viên xác minh và phê duyệt trước khi đăng nhập lại.";
         return RedirectToAction(nameof(Login));
@@ -119,12 +108,13 @@ public sealed class AccountController(MyStockContext context) : AuthControllerBa
     [Authorize(AuthenticationSchemes = "Cookies"), HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(PasswordInput input, string? confirmPassword)
     {
-        if (input.NewPassword != confirmPassword) ModelState.AddModelError("", "Mật khẩu xác nhận không khớp.");
+        if (input.NewPassword != confirmPassword)
+            ModelState.AddModelError("", "Mật khẩu xác nhận không khớp.");
         if (ModelState.IsValid)
         {
             try
             {
-                await ChangePasswordCore(User, input);
+                await Authentication.ChangePasswordAsync(User, input);
                 await HttpContext.SignOutAsync("Cookies");
                 TempData["RegistrationMessage"] = "Đã đổi mật khẩu. Hãy đăng nhập lại.";
                 return RedirectToAction(nameof(Login));
@@ -134,50 +124,11 @@ public sealed class AccountController(MyStockContext context) : AuthControllerBa
         return await Profile();
     }
 
-    private async Task<AspNetUser> ApplicantAccount()
+    private async Task SetApplicantViewDataAsync(AspNetUser user)
     {
-        var user = await db.AspNetUsers.SingleAsync(u => u.Id == CurrentUserId(User));
-        if (user.ResidentId != null || user.VerificationStatus != "APPROVED" || await IsAdmin(user.Id))
-            throw new AppFault(403, "Chỉ tài khoản đã duyệt nhưng chưa có hồ sơ cư dân được bổ sung thông tin đăng ký.");
-        return user;
+        ViewData["RegistrationGroups"] = await accounts.GetGroupsAsync();
+        ViewData["ApplicantName"] = user.FullName;
+        ViewData["ApplicantVersion"] = Convert.ToBase64String(user.RowVersion);
     }
 
-    private async Task RegisterCore(RegisterInput input)
-    {
-        string normalizedName = input.UserName.Trim().ToUpperInvariant();
-        if (await db.AspNetUsers.AnyAsync(u => u.NormalizedUserName == normalizedName))
-            throw new AppFault(409, "Tên đăng nhập đã được sử dụng.");
-        if (string.IsNullOrWhiteSpace(input.FullName))
-            throw new AppFault(400, "Nhập họ và tên.");
-        if (!await db.ResidentialUnits.AnyAsync(g => g.Id == input.GroupId && g.UnitType == "GROUP" && g.IsActive && g.ParentUnit != null && g.ParentUnit.IsActive && g.ParentUnit.UnitType == "AREA"))
-            throw new AppFault(400, "Tổ dân phố không còn hoạt động. Vui lòng chọn lại.");
-        input.Address = input.Address.Trim();
-        input.CitizenId = string.IsNullOrWhiteSpace(input.CitizenId) ? null : input.CitizenId.Trim();
-        input.Occupation = string.IsNullOrWhiteSpace(input.Occupation) ? null : input.Occupation.Trim();
-
-        var user = new AspNetUser
-        {
-            Id = Guid.NewGuid().ToString(),
-            UserName = input.UserName.Trim(),
-            NormalizedUserName = normalizedName,
-            FullName = input.FullName.Trim(),
-            PhoneNumber = input.PhoneNumber.Trim(),
-            IsActive = true,
-            VerificationStatus = "PENDING",
-            RegistrationProfile = System.Text.Json.JsonSerializer.Serialize<RegistrationProfileInput>(input),
-            SecurityStamp = Guid.NewGuid().ToString(),
-            ConcurrencyStamp = Guid.NewGuid().ToString(),
-            LockoutEnabled = true,
-            PermissionVersion = 1,
-            CreatedAt = DateTime.UtcNow
-        };
-        user.PasswordHash = HashPassword(user, input.Password);
-        // Chưa cấp role và chưa liên kết hồ sơ cư dân khi tự đăng ký.
-        db.AspNetUsers.Add(user);
-        await db.SaveChangesAsync();
-    }
-
-    private async Task RegistrationGroups() => ViewData["RegistrationGroups"] = await db.ResidentialUnits.AsNoTracking()
-        .Where(g => g.IsActive && g.UnitType == "GROUP" && g.ParentUnit != null && g.ParentUnit.IsActive && g.ParentUnit.UnitType == "AREA")
-        .OrderBy(g => g.Name).ToListAsync();
 }

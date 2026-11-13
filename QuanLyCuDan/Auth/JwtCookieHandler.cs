@@ -1,33 +1,34 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using QuanLyCuDan.Controllers;
-using QuanLyCuDan.Models;
+using QuanLyCuDan.Services;
 
 namespace QuanLyCuDan.Auth;
 
 // MVC forms and SignalR send the signed JWT in an HttpOnly cookie.
 public sealed class JwtCookieHandler(IOptionsMonitor<AuthenticationSchemeOptions> options,
-    ILoggerFactory logger, UrlEncoder encoder, TokenIssuer tokens, MyStockContext db,
+    ILoggerFactory logger, UrlEncoder encoder, TokenIssuer tokens, SessionService sessions,
     IWebHostEnvironment environment) : SignInAuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     private const string CookieName = "qlcd.auth";
     private CookieOptions CookieSettings() => new()
     {
-        HttpOnly = true, Secure = !environment.IsDevelopment() || Request.IsHttps,
-        SameSite = SameSiteMode.Strict, Path = "/"
+        HttpOnly = true,
+        Secure = !environment.IsDevelopment() || Request.IsHttps,
+        SameSite = SameSiteMode.Strict,
+        Path = "/"
     };
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Cookies.TryGetValue(CookieName, out var raw)) return AuthenticateResult.NoResult();
+        if (!Request.Cookies.TryGetValue(CookieName, out var raw))
+            return AuthenticateResult.NoResult();
         try
         {
             var principal = tokens.Validate(raw);
-            if (!await BaseController.ValidSession(db, principal))
+            if (!await sessions.IsValidAsync(principal))
                 return AuthenticateResult.Fail("Session revoked or expired.");
             var properties = new AuthenticationProperties
             {
@@ -43,10 +44,7 @@ public sealed class JwtCookieHandler(IOptionsMonitor<AuthenticationSchemeOptions
 
     protected override async Task HandleSignInAsync(ClaimsPrincipal user, AuthenticationProperties? properties)
     {
-        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        var sessionId = Guid.Parse(user.FindFirstValue("sid")!);
-        var session = await db.UserSessions.Include(s => s.User)
-            .SingleAsync(s => s.Id == sessionId && s.UserId == userId && s.RevokedAt == null);
+        var session = await sessions.GetForSignInAsync(user);
         Response.Cookies.Append(CookieName, tokens.Issue(session.User, session), CookieSettings());
     }
 

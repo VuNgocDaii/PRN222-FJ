@@ -58,7 +58,8 @@ public sealed record AssignmentInput(
     [Required] string ScopeType,
     long? UnitId,
     DateTime ValidFrom,
-    DateTime? ValidUntil);
+    DateTime? ValidUntil,
+    long? OrganizationId = null);
 
 public sealed record RevokeInput(
     [Required, StringLength(1000)] string Reason,

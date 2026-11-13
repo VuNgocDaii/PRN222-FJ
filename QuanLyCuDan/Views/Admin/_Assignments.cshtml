@@ -16,15 +16,16 @@
         </form><p class="muted small">Tìm tài khoản trong danh sách để gán vai trò.</p>
     </div>
     @if (selected != null && selected.Id != currentId && selected.IsActive) {
-    <div class="panel"><h2>Gán vai trò</h2>
+    <div class="panel"><h2>Gán vai trò</h2><p>Mỗi tài khoản một vai trò. Thu hồi vai trò hiện tại trước khi gán vai trò khác.</p>
         <form id="assign-role" class="form-grid" asp-controller="RoleAssignments" asp-action="Assign" method="post" data-role-assignment>
             <input name="userId" type="hidden" value="@selected.Id"><input name="returnUrl" type="hidden" value="@returnUrl">
             <label>Vai trò<select name="RoleId" id="assignment-role" required>@foreach (var role in Model.Roles.Where(r => r.IsActive)) {
-                var allowed = scopes.Where(s => role.Permissions.Count > 0 && role.Permissions.All(p => p.PermissionAllowedScopes.Any(a => a.ScopeType == s)));
+                var allowed = scopes.Where(s => QuanLyCuDan.Services.RoleScopeRules.Supports(role.Permissions, s));
                 <option value="@role.Id" data-scopes="@string.Join(",", allowed)">@role.DisplayName</option>
             }</select></label>
             <label>Phạm vi<select name="ScopeType" id="assignment-scope">@foreach (var scope in scopes) { <option value="@scope">@ScopeLabel(scope)</option> }</select></label>
             <label>Địa bàn<select name="UnitId" id="assignment-unit"><option value="">Chọn địa bàn</option>@foreach (var unit in Model.Units) { <option value="@unit.Id" data-type="@unit.UnitType">@unit.Name</option> }</select></label>
+        <label>Tổ chức quản lý (nếu có)<select name="OrganizationId"><option value="">Toàn địa bàn</option>@foreach (var org in Model.Organizations) { <option value="@org.Id">@org.Name</option> }</select></label>
             <label>Bắt đầu<input name="ValidFrom" type="datetime-local" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required></label><label>Kết thúc (không bắt buộc)<input name="ValidUntil" type="datetime-local"></label><button class="primary" type="submit">Gán vai trò</button>
             <p class="form-help admin-form-help" data-assignment-help role="status"></p>
         </form>

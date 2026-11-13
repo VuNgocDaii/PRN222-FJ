@@ -6,7 +6,7 @@ const base=process.env.AUTH_TEST_URL||'http://127.0.0.1:5099';
 if(!process.env.PORTAL_TEST_SQL_SERVER)throw new Error('Set PORTAL_TEST_SQL_SERVER to the local demo server used by the app.');
 const prefix='onboard_'+randomUUID().replaceAll('-','');
 const names=[prefix+'_head',prefix+'_member',prefix+'_legacy'];
-function sql(query){const r=spawnSync('sqlcmd',['-S',process.env.PORTAL_TEST_SQL_SERVER,'-d','QuanLyCuDan','-E','-C','-I','-b','-h','-1','-y','4000','-w','65535','-Q','SET NOCOUNT ON; '+query],{encoding:'utf8'});if(r.status!==0)throw new Error(r.stderr||r.stdout);return r.stdout.trim();}
+function sql(query){const r=spawnSync('sqlcmd',['-S',process.env.PORTAL_TEST_SQL_SERVER,'-d',process.env.PORTAL_TEST_DATABASE||'QuanLyCuDan','-E','-C','-I','-b','-h','-1','-y','4000','-w','65535','-Q','SET NOCOUNT ON; '+query],{encoding:'utf8'});if(r.status!==0)throw new Error(r.stderr||r.stdout);return r.stdout.trim();}
 function browser(){const jar=new Map();return async(url,{method='GET',form}={})=>{const headers={Cookie:[...jar].map(([k,v])=>`${k}=${v}`).join('; ')};if(form)headers['Content-Type']='application/x-www-form-urlencoded';const r=await fetch(base+url,{method,headers,body:form?new URLSearchParams(form):undefined,redirect:'manual',signal:AbortSignal.timeout(20000)});r.headers.getSetCookie().forEach(v=>{const p=v.split(';')[0],i=p.indexOf('=');jar.set(p.slice(0,i),p.slice(i+1));});return r;};}
 function input(html,name){const tag=[...html.matchAll(/<input\b[^>]*>/g)].map(m=>m[0]).find(t=>t.includes(`name="${name}"`));assert.ok(tag,'Missing '+name);return (tag.match(/value="([^"]*)"/)?.[1]||'').replace(/&#x([0-9a-f]+);/gi,(_,hex)=>String.fromCodePoint(parseInt(hex,16))).replace(/&amp;/g,'&');}
 const csrf=html=>input(html,'__RequestVerificationToken');
@@ -50,7 +50,7 @@ async function reviewData(admin,name){const html=await page(admin,'/Registration
     assert.equal(residentFor(names[0]),'NULL','Wrong resident accepted');
     await post(admin,'/Registrations',csrf(dialog),link);
     assert.equal(residentFor(names[0]),residentId);
-    assert.equal(sql(`SELECT COUNT(*) FROM UserRoleAssignments a JOIN AspNetRoles r ON r.Id=a.RoleId WHERE a.UserId='${idFor(names[0])}' AND a.ScopeType='SELF' AND r.Name IN('ACCOUNT','RESIDENT')`),'2');
+    assert.equal(sql(`SELECT COUNT(*) FROM UserRoleAssignments a JOIN AspNetRoles r ON r.Id=a.RoleId WHERE a.UserId='${idFor(names[0])}' AND a.ScopeType='SELF' AND a.RevokedAt IS NULL AND r.Name IN('ACCOUNT','RESIDENT')`),'1');
     await post(admin,'/Registrations',csrf(dialog),link);
     assert.equal(sql(`SELECT COUNT(*) FROM Activities WHERE EventCode='RESIDENT_LINK_COMPLETED' AND TargetId='${idFor(names[0])}'`),'1');
     const other=browser();const otherSignup=await page(other,'/Account/Register');

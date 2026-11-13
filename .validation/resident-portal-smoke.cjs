@@ -10,7 +10,7 @@ const server = process.env.PORTAL_TEST_SQL_SERVER;
 if (!server) throw new Error('Set PORTAL_TEST_SQL_SERVER explicitly; use a local DEMO database only.');
 const fixture = 'portal_' + randomUUID().replaceAll('-', '');
 function sql(query) {
-    const result = spawnSync('sqlcmd', ['-S', server, '-d', 'QuanLyCuDan', '-E', '-C', '-I', '-b', '-h', '-1', '-y', '4000', '-w', '65535', '-Q', 'SET NOCOUNT ON; ' + query], { encoding: 'utf8' });
+    const result = spawnSync('sqlcmd', ['-S', server, '-d', process.env.PORTAL_TEST_DATABASE || 'QuanLyCuDan', '-E', '-C', '-I', '-b', '-h', '-1', '-y', '4000', '-w', '65535', '-Q', 'SET NOCOUNT ON; ' + query], { encoding: 'utf8' });
     if (result.status !== 0) throw new Error(result.stderr || result.stdout);
     return result.stdout.trim();
 }
@@ -54,7 +54,7 @@ let initialized = false;
         UPDATE Households SET HeadResidentId=@resident WHERE Id=@house;
         UPDATE AspNetUsers SET ResidentId=@resident WHERE Id='${fixture}';
         INSERT UserRoleAssignments(UserId,RoleId,ScopeType,AssignedByUserId,AssignedAt,ValidFrom)
-            SELECT '${fixture}',Id,'SELF','${fixture}',SYSUTCDATETIME(),SYSUTCDATETIME() FROM AspNetRoles WHERE Name IN('ACCOUNT','RESIDENT') AND IsActive=1;
+            SELECT '${fixture}',Id,'SELF','${fixture}',SYSUTCDATETIME(),SYSUTCDATETIME() FROM AspNetRoles WHERE Name='RESIDENT' AND IsActive=1;
         INSERT FeeCampaigns(Code,ResidentialGroupId,Name,FeeType,AmountPerHousehold,CreatedByUserId) VALUES('${fixture.slice(0,30)}',@group,'${fixture}_fee','REQUIRED',432123,'${fixture}');
         DECLARE @campaign bigint=SCOPE_IDENTITY(); INSERT Payments(CampaignId,HouseholdId,AmountDue) VALUES(@campaign,@house,432123);
         INSERT Announcements(ResidentialGroupId,Title,Body,Audience,Status,CreatedByUserId,PublishedByUserId,PublishedAt,ExpiresAt)

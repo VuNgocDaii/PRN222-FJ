@@ -29,6 +29,7 @@
                 {
                     <a href="/Resident" class="nav-item">Cổng cư dân</a>
                 }
+                @if (ViewData["CanManageOrganizations"] is true) { <a href="/Organizations" class="nav-item">Tổ chức trong thôn</a> }
                 <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý @await Component.InvokeAsync("FeedbackCount")</a>
                 @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read") || access.Contains("roles.assign"))
                 {

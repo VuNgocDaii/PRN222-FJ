@@ -1,65 +1,58 @@
-param(
+﻿param(
     [string]$SqlServer = 'localhost',
-    [ValidateRange(1024, 65535)][int]$Port = 5199
+    [ValidateRange(1024, 65535)][int]$Port = 5199,
+    [ValidatePattern('^[A-Za-z0-9_]*VillageValidation[A-Za-z0-9_]*$')][string]$Database = 'QuanLyCuDan_VillageValidation'
 )
-
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $project = Join-Path $repo 'QuanLyCuDan'
-$artifacts = Join-Path $project '.local/notification-tests'
+$artifacts = Join-Path $repo '.local/village-tests'
 $baseUrl = "http://127.0.0.1:$Port"
 $appProcess = $null
 $savedEnvironment = @{}
-foreach ($name in @('ASPNETCORE_ENVIRONMENT', 'ConnectionStrings__MyStock', 'AUTH_TEST_URL', 'PORTAL_TEST_SQL_SERVER')) {
-    $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+foreach ($name in @('ASPNETCORE_ENVIRONMENT','ConnectionStrings__MyStock','AUTH_TEST_URL','PORTAL_TEST_SQL_SERVER','PORTAL_TEST_DATABASE')) {
+    $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name,'Process')
 }
-
 Push-Location $repo
 try {
-    foreach ($command in @('dotnet', 'node', 'sqlcmd')) {
-        Get-Command $command -ErrorAction Stop | Out-Null
-    }
-    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
-    try { $listener.Start() } finally { $listener.Stop() }
-
-    # Requires the local fictional demo database. Never recreates or reseeds it.
-    & sqlcmd -S $SqlServer -E -C -I -b -f 65001 -i database/20261109_RegistrationProfile.sql
-    if ($LASTEXITCODE -ne 0) { throw 'Registration database upgrade failed.' }
-    & sqlcmd -S $SqlServer -E -C -I -b -f 65001 -i database/20261109_AnnouncementReview.sql
-    if ($LASTEXITCODE -ne 0) { throw 'Announcement database upgrade failed.' }
-
     New-Item -ItemType Directory -Force -Path $artifacts | Out-Null
-    & dotnet build QuanLyCuDan/QuanLyCuDan.csproj -o "$artifacts/app" --nologo
-    if ($LASTEXITCODE -ne 0) { throw 'Application build failed.' }
-
+    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,$Port)
+    try { $listener.Start() } finally { $listener.Stop() }
+    $sqlFile = Join-Path $artifacts 'install.sql'
+    $sql = [IO.File]::ReadAllText((Join-Path $repo 'database/QuanLyCuDan.sql')).Replace('QuanLyCuDan',$Database)
+    [IO.File]::WriteAllText($sqlFile,$sql,[Text.UTF8Encoding]::new($true))
+    & sqlcmd -S $SqlServer -E -C -b -f 65001 -i $sqlFile -o "$artifacts/schema.log"
+    if ($LASTEXITCODE -ne 0) { throw "Schema installation failed. See $artifacts/schema.log" }
+    & sqlcmd -S $SqlServer -E -C -b -f 65001 -i $sqlFile -o "$artifacts/schema-rerun.log"
+    if ($LASTEXITCODE -ne 0) { throw 'Schema rerun failed.' }
+    & dotnet build QuanLyCuDan/QuanLyCuDan.csproj --no-restore -o "$artifacts/app" --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
     $env:ASPNETCORE_ENVIRONMENT = 'Development'
-    $env:ConnectionStrings__MyStock = "Server=$SqlServer;Database=QuanLyCuDan;Integrated Security=True;Encrypt=False;TrustServerCertificate=True"
+    $env:ConnectionStrings__MyStock = "Server=$SqlServer;Database=$Database;Integrated Security=True;TrustServerCertificate=True"
     $env:AUTH_TEST_URL = $baseUrl
     $env:PORTAL_TEST_SQL_SERVER = $SqlServer
+    $env:PORTAL_TEST_DATABASE = $Database
     $appDll = Join-Path $artifacts 'app/QuanLyCuDan.dll'
-    $appProcess = Start-Process -FilePath (Get-Command dotnet).Source -ArgumentList "`"$appDll`" --urls $baseUrl" -WorkingDirectory $project -WindowStyle Hidden -PassThru -RedirectStandardOutput "$artifacts/server.log" -RedirectStandardError "$artifacts/server-error.log"
-    $ready = $false
-    $deadline = (Get-Date).AddSeconds(60)
-    while ((Get-Date) -lt $deadline) {
-        if ($appProcess.HasExited) { throw "Application exited. See $artifacts/server-error.log" }
-        try {
-            $response = Invoke-WebRequest "$baseUrl/Account/Login" -UseBasicParsing -TimeoutSec 2
-            if ($response.StatusCode -eq 200) { $ready = $true; break }
-        } catch { Start-Sleep -Milliseconds 500 }
+    foreach ($suite in @('system-roles-smoke','village-workflow-smoke','registration-onboarding-smoke','controllers-smoke','resident-portal-smoke')) {
+        $appProcess = Start-Process -FilePath (Get-Command dotnet).Source -ArgumentList "`"$appDll`" --urls $baseUrl" -WorkingDirectory $project -WindowStyle Hidden -PassThru -RedirectStandardOutput "$artifacts/$suite.log" -RedirectStandardError "$artifacts/$suite-error.log"
+        $ready = $false
+        $deadline = (Get-Date).AddSeconds(45)
+        while ((Get-Date) -lt $deadline) {
+            if ($appProcess.HasExited) { throw "App exited. See $artifacts/$suite-error.log" }
+            try {
+                if ((Invoke-WebRequest "$baseUrl/Account/Login" -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $ready = $true; break }
+            } catch { Start-Sleep -Milliseconds 300 }
+        }
+        if (!$ready) { throw 'Application did not become ready.' }
+        & node ".validation/$suite.cjs"
+        if ($LASTEXITCODE -ne 0) { throw "$suite failed." }
+        Stop-Process -Id $appProcess.Id
+        $appProcess.WaitForExit()
+        $appProcess = $null
     }
-    if (!$ready) { throw "Application did not become ready. See $artifacts/server.log" }
-
-    & node .validation/auth-flow-smoke.cjs
-    if ($LASTEXITCODE -ne 0) { throw 'MVC JWT authentication tests failed.' }
-    & node .validation/announcements-smoke.cjs
-    if ($LASTEXITCODE -ne 0) { throw 'Notification management tests failed.' }
-    Write-Host 'PASS: notification management build and workflow tests.'
+    Write-Host 'PASS: village schema, rerun, workflow, onboarding, MVC and resident regression suites.'
 } finally {
-    if ($null -ne $appProcess -and !$appProcess.HasExited) {
-        Stop-Process -Id $appProcess.Id -ErrorAction SilentlyContinue
-    }
-    foreach ($name in $savedEnvironment.Keys) {
-        [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')
-    }
+    if ($null -ne $appProcess -and !$appProcess.HasExited) { Stop-Process -Id $appProcess.Id -ErrorAction SilentlyContinue }
+    foreach ($name in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name,$savedEnvironment[$name],'Process') }
     Pop-Location
 }

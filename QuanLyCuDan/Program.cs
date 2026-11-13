@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,24 @@ if (localDevelopment)
 builder.Services.AddControllersWithViews(o => o.Filters.Add(new Microsoft.AspNetCore.Mvc.ResponseCacheAttribute { NoStore = true, Location = Microsoft.AspNetCore.Mvc.ResponseCacheLocation.None }));
 builder.Services.AddDbContext<MyStockContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("MyStock")));
 builder.Services.AddSingleton<TokenIssuer>();
+builder.Services.AddScoped<NavigationService>();
+builder.Services.AddScoped<PersistenceSession>();
+builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<AdminService>();
+builder.Services.AddScoped<PublicPortalService>();
+builder.Services.AddScoped<RegistrationService>();
+builder.Services.AddScoped<ResidentService>();
+builder.Services.AddScoped<FeedbackService>();
+builder.Services.AddScoped<OrganizationService>();
+builder.Services.AddScoped<AnnouncementAccessService>();
+builder.Services.AddScoped<AnnouncementService>();
+builder.Services.AddScoped<NotificationSubscriptionService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<RoleService>();
+builder.Services.AddScoped<PermissionService>();
+builder.Services.AddScoped<RoleAssignmentService>();
 builder.Services.AddAntiforgery(o =>
 {
     o.HeaderName = "X-CSRF-TOKEN";

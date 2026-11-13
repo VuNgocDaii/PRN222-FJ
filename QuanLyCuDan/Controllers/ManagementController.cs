@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuanLyCuDan.Models;
@@ -5,7 +6,7 @@ using QuanLyCuDan.Models;
 namespace QuanLyCuDan.Controllers;
 
 [Authorize(AuthenticationSchemes = "Cookies")]
-public sealed class ManagementController(MyStockContext context) : BaseController(context)
+public sealed class ManagementController(NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet("/Management/{module=overview}")]
     public IActionResult Index(string module)

@@ -2,7 +2,7 @@
 @{
     var access = ViewData["Permissions"] as HashSet<string> ?? new();
     var role = Model.SelectedRole;
-    var readOnly = role == null || role.IsSystemRole || Model.OwnRoleIds.Contains(role.Id);
+    var readOnly = role == null;
     var returnUrl = Url.Action("Index", "Admin", new { tab = "roles", roleId = role?.Id });
 }
 @if (access.Contains("roles.create")) {
@@ -16,7 +16,7 @@
     <form id="role-details" asp-controller="Roles" asp-action="Update" asp-route-id="@role.Id" method="post" class="form-grid"><input name="returnUrl" type="hidden" value="@returnUrl"><input name="ConcurrencyStamp" type="hidden" value="@role.ConcurrencyStamp">
         <label>Tên hiển thị<input name="DisplayName" value="@role.DisplayName" required maxlength="150" readonly="@readOnly"></label><label>Mô tả<input name="Description" value="@role.Description" maxlength="500" readonly="@readOnly"></label><label class="check"><input name="IsActive" type="checkbox" value="true" checked="@role.IsActive" disabled="@readOnly">Đang hoạt động</label><input name="IsActive" type="hidden" value="false"><button class="secondary" disabled="@(readOnly || !access.Contains("roles.update"))">Lưu thông tin</button>
     </form>
-    <p id="role-note" class="muted small">@(role.IsSystemRole ? "Vai trò hệ thống được bảo vệ. Hãy tạo vai trò tùy chỉnh để thay đổi quyền." : Model.OwnRoleIds.Contains(role.Id) ? "Không thể sửa vai trò đang hoặc sẽ được gán cho chính bạn." : "Cập nhật thông tin và trạng thái của vai trò.")</p>
+    <p id="role-note" class="muted small">Cập nhật thông tin và trạng thái của vai trò.</p>
     } else { <p class="empty">Chưa có vai trò.</p> }
 </div>
 @if (role != null && access.Contains("permissions.read")) {

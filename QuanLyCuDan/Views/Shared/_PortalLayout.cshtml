@@ -19,6 +19,8 @@
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <a href="/Resident" class="@(residentPage ? "selected" : "")">Cổng cư dân</a>
+                @if (ViewData["CanManageAnnouncements"] is true) { <a href="/Announcements">Quản lý thông báo</a> }
+                @if (ViewData["CanManageOrganizations"] is true) { <a href="/Organizations">Tổ chức</a> }
                 <a href="/Account/Profile">Tài khoản</a>
                 <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary" type="submit">Đăng xuất</button></form>
             }

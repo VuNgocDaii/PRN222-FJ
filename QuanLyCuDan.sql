@@ -383,14 +383,14 @@ BEGIN TRY
     DECLARE @Now datetime2(3)=SYSUTCDATETIME(), @DemoPassword nvarchar(100)=N'12345678';
     DECLARE @UserSeed TABLE(Id nvarchar(450), UserName nvarchar(256), FullName nvarchar(150), VerificationStatus varchar(20));
     INSERT @UserSeed VALUES
-      (N'u-admin',N'admin',N'Quản trị viên Demo','NOT_APPLICABLE'),
-      (N'u-officer-a',N'canbo01',N'Cán bộ tổ A Demo','NOT_APPLICABLE'),
-      (N'u-officer-b',N'canbo02',N'Cán bộ tổ B Demo','NOT_APPLICABLE'),
-      (N'u-collector',N'thuphi01',N'Cán bộ thu phí Demo','NOT_APPLICABLE'),
-      (N'u-resident-a',N'dan01',N'Nguyễn Văn An Demo','APPROVED'),
-      (N'u-resident-b',N'dan02',N'Trần Thị Bình Demo','APPROVED'),
-      (N'u-resident-c',N'dan03',N'Lê Văn Cường Demo','APPROVED'),
-      (N'u-pending',N'pending01',N'Người đăng ký Demo','PENDING');
+      (N'u-admin',N'admin',N'Nguyễn Thành Trung','NOT_APPLICABLE'),
+      (N'u-officer-a',N'canbo01',N'Đặng Văn Hải','NOT_APPLICABLE'),
+      (N'u-officer-b',N'canbo02',N'Trần Quốc Hùng','NOT_APPLICABLE'),
+      (N'u-collector',N'thuphi01',N'Phạm Thị Hồng','NOT_APPLICABLE'),
+      (N'u-resident-a',N'dan01',N'Nguyễn Văn An','APPROVED'),
+      (N'u-resident-b',N'dan02',N'Trần Thị Bình','APPROVED'),
+      (N'u-resident-c',N'dan03',N'Lê Văn Cường','APPROVED'),
+      (N'u-pending',N'pending01',N'Đỗ Thị Hương','PENDING');
     DECLARE @Uid nvarchar(450), @Username nvarchar(256), @Name nvarchar(150), @Verification varchar(20), @Salt varbinary(16);
     DECLARE UserCursor CURSOR LOCAL FAST_FORWARD FOR SELECT Id,UserName,FullName,VerificationStatus FROM @UserSeed;
     OPEN UserCursor;
@@ -416,10 +416,10 @@ BEGIN TRY
 
 
     INSERT dbo.ResidentialUnits(Code,Name,UnitType,ParentUnitId,Address) VALUES
-      ('KDC-DEMO-01',N'Khu dân cư Minh Hòa Demo','AREA',NULL,N'Địa chỉ giả lập 01'),
-      ('KDC-DEMO-02',N'Khu dân cư An Phú Demo','AREA',NULL,N'Địa chỉ giả lập 02');
+      ('KDC-01',N'Khu dân cư Minh Hòa','AREA',NULL,N'Đường Nguyễn Văn Linh, khu dân cư Minh Hòa'),
+      ('KDC-02',N'Khu dân cư An Phú','AREA',NULL,N'Đường Lê Lợi, khu dân cư An Phú');
     INSERT dbo.ResidentialUnits(Code,Name,UnitType,ParentUnitId) VALUES
-      ('TO-A',N'Tổ A Demo','GROUP',1),('TO-B',N'Tổ B Demo','GROUP',1),('TO-C',N'Tổ C Demo','GROUP',2);
+      ('TO-A',N'Tổ dân phố số 1','GROUP',1),('TO-B',N'Tổ dân phố số 2','GROUP',1),('TO-C',N'Tổ dân phố số 3','GROUP',2);
     DECLARE @Catalog TABLE(Code varchar(100), Name nvarchar(200), Module varchar(50), Kind varchar(10));
     INSERT @Catalog VALUES
       ('accounts.read',N'Xem tài khoản','ACCOUNTS','ADMIN'),
@@ -521,17 +521,17 @@ BEGIN TRY
 
 
     INSERT dbo.Households(Code,ResidentialGroupId,Address,RegisteredAt,CreatedByUserId) VALUES
-      ('HO-DEMO-001',3,N'Số 01, đường Giả Lập, tổ A','2026-01-01',N'u-officer-a'),
-      ('HO-DEMO-002',3,N'Số 02, đường Giả Lập, tổ A','2026-02-01',N'u-officer-a'),
-      ('HO-DEMO-003',4,N'Số 03, đường Giả Lập, tổ B','2026-03-01',N'u-officer-b');
+      ('HO-2026-001',3,N'Số 12, đường Hoa Mai, tổ dân phố số 1','2026-01-01',N'u-officer-a'),
+      ('HO-2026-002',3,N'Số 24, đường Hoa Mai, tổ dân phố số 1','2026-02-01',N'u-officer-a'),
+      ('HO-2026-003',4,N'Số 8, đường Hoa Phượng, tổ dân phố số 2','2026-03-01',N'u-officer-b');
     INSERT dbo.Residents(FullName,CitizenId,DateOfBirth,Gender,Occupation,HouseholdId,RelationshipToHead,ResidenceStatus,MovedInAt,MovedOutAt) VALUES
-      (N'Nguyễn Văn An Demo','000000000001','1985-05-15','MALE',N'Nhân viên Demo',1,N'Chủ hộ','RESIDING','2026-01-01',NULL),
-      (N'Trần Thị Bình Demo','000000000002','1988-08-20','FEMALE',N'Giáo viên Demo',1,N'Vợ','RESIDING','2026-01-01',NULL),
-      (N'Lê Văn Cường Demo','000000000003','1993-03-10','MALE',N'Kỹ thuật viên Demo',3,N'Chủ hộ','TEMPORARY','2026-03-01',NULL),
-      (N'Phạm Văn Dũng Demo','000000000004','1980-06-12','MALE',N'Kinh doanh Demo',2,N'Chủ hộ','RESIDING','2026-02-01',NULL),
-      (N'Nguyễn Minh Demo',NULL,'2015-09-01','OTHER',N'Học sinh Demo',1,N'Con','RESIDING','2026-01-01',NULL),
-      (N'Vũ Thị Hoa Demo','000000000006','1990-11-11','FEMALE',N'Nhân viên Demo',2,N'Vợ','ABSENT','2026-02-01',NULL),
-      (N'Đặng Văn Nam Demo','000000000007','1992-12-01','MALE',N'Lao động Demo',NULL,NULL,'MOVED_OUT','2026-02-01','2026-08-01');
+      (N'Nguyễn Văn An','000000000001','1985-05-15','MALE',N'Nhân viên',1,N'Chủ hộ','RESIDING','2026-01-01',NULL),
+      (N'Trần Thị Bình','000000000002','1988-08-20','FEMALE',N'Giáo viên',1,N'Vợ','RESIDING','2026-01-01',NULL),
+      (N'Lê Văn Cường','000000000003','1993-03-10','MALE',N'Kỹ thuật viên',3,N'Chủ hộ','TEMPORARY','2026-03-01',NULL),
+      (N'Phạm Văn Dũng','000000000004','1980-06-12','MALE',N'Kinh doanh',2,N'Chủ hộ','RESIDING','2026-02-01',NULL),
+      (N'Nguyễn Minh',NULL,'2015-09-01','OTHER',N'Học sinh',1,N'Con','RESIDING','2026-01-01',NULL),
+      (N'Vũ Thị Hoa','000000000006','1990-11-11','FEMALE',N'Nhân viên',2,N'Vợ','ABSENT','2026-02-01',NULL),
+      (N'Đặng Văn Nam','000000000007','1992-12-01','MALE',N'Lao động',NULL,NULL,'MOVED_OUT','2026-02-01','2026-08-01');
     UPDATE dbo.Households SET HeadResidentId=CASE Id WHEN 1 THEN 1 WHEN 2 THEN 4 ELSE 3 END;
     UPDATE dbo.AspNetUsers SET ResidentId=CASE Id WHEN N'u-resident-a' THEN 1 WHEN N'u-resident-b' THEN 2 ELSE 3 END,
       ReviewedByUserId=CASE Id WHEN N'u-resident-c' THEN N'u-officer-b' ELSE N'u-officer-a' END,ReviewedAt=DATEADD(day,-30,@Now)
@@ -539,23 +539,23 @@ BEGIN TRY
 
     INSERT dbo.Requests(Code,RequestKind,SubmittedByUserId,ResidentId,AssignedGroupId,RequestType,Subject,Body,
       StartDate,EndDate,TargetHouseholdId,Status,ProcessedByUserId,ProcessedAt,ProcessingNote,ClientRequestKey,SubmittedAt) VALUES
-      ('YC-DEMO-001','RESIDENCE',N'u-resident-a',1,3,'TEMPORARY_ABSENCE',N'Xin tạm vắng Demo',N'Đi công tác giả lập.',CONVERT(date,DATEADD(day,7,@Now)),CONVERT(date,DATEADD(day,37,@Now)),1,'PENDING',NULL,NULL,NULL,'seed-yc-001',DATEADD(day,-1,@Now)),
-      ('YC-DEMO-002','RESIDENCE',N'u-resident-b',2,3,'TEMPORARY_ABSENCE',N'Yêu cầu đang xử lý Demo',N'Yêu cầu giả lập.',CONVERT(date,DATEADD(day,3,@Now)),CONVERT(date,DATEADD(day,10,@Now)),1,'PROCESSING',NULL,NULL,NULL,'seed-yc-002',DATEADD(day,-2,@Now)),
-      ('YC-DEMO-004','RESIDENCE',N'u-resident-a',1,3,'MOVE_OUT',N'Xin chuyển đi Demo',N'Thiếu thông tin nơi chuyển đến.',CONVERT(date,@Now),NULL,NULL,'REJECTED',N'u-officer-a',@Now,N'Chưa có thông tin nơi chuyển đến.','seed-yc-004',DATEADD(day,-3,@Now));
+      ('YC-2026-001','RESIDENCE',N'u-resident-a',1,3,'TEMPORARY_ABSENCE',N'Xin tạm vắng',N'Đi công tác tại Đà Nẵng trong một tháng theo thời gian đăng ký.',CONVERT(date,DATEADD(day,7,@Now)),CONVERT(date,DATEADD(day,37,@Now)),1,'PENDING',NULL,NULL,NULL,'seed-yc-001',DATEADD(day,-1,@Now)),
+      ('YC-2026-002','RESIDENCE',N'u-resident-b',2,3,'TEMPORARY_ABSENCE',N'Yêu cầu đang xử lý',N'Về quê thăm người thân trong một tuần, thông tin liên hệ đã được cập nhật.',CONVERT(date,DATEADD(day,3,@Now)),CONVERT(date,DATEADD(day,10,@Now)),1,'PROCESSING',NULL,NULL,NULL,'seed-yc-002',DATEADD(day,-2,@Now)),
+      ('YC-2026-004','RESIDENCE',N'u-resident-a',1,3,'MOVE_OUT',N'Xin chuyển đi',N'Thiếu thông tin nơi chuyển đến.',CONVERT(date,@Now),NULL,NULL,'REJECTED',N'u-officer-a',@Now,N'Chưa có thông tin nơi chuyển đến.','seed-yc-004',DATEADD(day,-3,@Now));
     INSERT dbo.Requests(Code,RequestKind,SubmittedByUserId,ResidentId,AssignedGroupId,RequestType,Subject,Body,StartDate,EndDate,
       OriginalResidenceStatus,ResultResidenceStatus,TargetHouseholdId,ResultRelationship,ChangeAppliedAt,Status,ProcessedByUserId,ProcessedAt,ClientRequestKey,SubmittedAt) VALUES
-      ('YC-DEMO-003','RESIDENCE',N'u-resident-c',3,4,'TEMPORARY_RESIDENCE',N'Tạm trú đã duyệt Demo',N'Đăng ký tạm trú giả lập.','2026-03-01','2027-03-01',
+      ('YC-2026-003','RESIDENCE',N'u-resident-c',3,4,'TEMPORARY_RESIDENCE',N'Tạm trú đã duyệt',N'Đăng ký tạm trú tại hộ gia đình ở số 8, đường Hoa Phượng để thuận tiện cho công việc.','2026-03-01','2027-03-01',
        'MOVED_OUT','TEMPORARY',3,N'Chủ hộ','2026-03-01','APPROVED',N'u-officer-b','2026-03-01','seed-yc-003','2026-02-25');
     INSERT dbo.Requests(Code,RequestKind,Source,SubmittedByUserId,ResidentId,AssignedGroupId,RequestType,Subject,Body,StartDate,EndDate,
       OriginalHouseholdId,TargetHouseholdId,OriginalResidenceStatus,ResultResidenceStatus,OriginalRelationship,ResultRelationship,ChangeAppliedAt,Status,ProcessedByUserId,ProcessedAt,ClientRequestKey,SubmittedAt) VALUES
-      ('BD-DEMO-001','RESIDENCE','STAFF',N'u-officer-a',6,3,'TEMPORARY_ABSENCE',N'Ghi nhận tạm vắng Demo',N'Cán bộ ghi biến động trực tiếp theo quyền.','2026-09-01','2027-01-01',
+      ('BD-2026-001','RESIDENCE','STAFF',N'u-officer-a',6,3,'TEMPORARY_ABSENCE',N'Ghi nhận tạm vắng',N'Cán bộ ghi biến động trực tiếp theo quyền.','2026-09-01','2027-01-01',
        2,2,'RESIDING','ABSENT',N'Vợ',N'Vợ','2026-09-01','APPROVED',N'u-officer-a','2026-09-01','seed-bd-001','2026-09-01'),
-      ('BD-DEMO-002','RESIDENCE','STAFF',N'u-officer-a',7,3,'MOVE_OUT',N'Ghi nhận chuyển đi Demo',N'Cán bộ ghi chuyển đi giả lập.','2026-08-01',NULL,
+      ('BD-2026-002','RESIDENCE','STAFF',N'u-officer-a',7,3,'MOVE_OUT',N'Ghi nhận chuyển đi',N'Cập nhật chuyển nơi cư trú sau khi đối chiếu thông tin tiếp nhận.','2026-08-01',NULL,
        2,NULL,'RESIDING','MOVED_OUT',N'Người thân',NULL,'2026-08-01','APPROVED',N'u-officer-a','2026-08-01','seed-bd-002','2026-08-01');
     INSERT dbo.Requests(Code,RequestKind,SubmittedByUserId,ResidentId,AssignedGroupId,RequestType,Category,Subject,Body,Status,ProcessedByUserId,ProcessedAt,ClientRequestKey) VALUES
-      ('PA-DEMO-001','FEEDBACK',N'u-resident-a',1,3,'FEEDBACK','ENVIRONMENT',N'Góp ý vệ sinh Demo',N'Nội dung riêng tư giả lập của dan01.','PENDING',NULL,NULL,'seed-pa-001'),
-      ('PA-DEMO-002','FEEDBACK',N'u-resident-b',2,3,'FEEDBACK','INFRASTRUCTURE',N'Đèn chiếu sáng Demo',N'Nội dung riêng tư giả lập của dan02.','RESPONDED',N'u-officer-a',@Now,'seed-pa-002'),
-      ('PA-DEMO-003','FEEDBACK',N'u-resident-c',3,4,'FEEDBACK','OTHER',N'Góp ý tổ B Demo',N'canbo01 không được đọc nội dung này.','PROCESSING',NULL,NULL,'seed-pa-003');
+      ('PA-2026-001','FEEDBACK',N'u-resident-a',1,3,'FEEDBACK','ENVIRONMENT',N'Góp ý vệ sinh',N'Rác sinh hoạt tại đầu ngõ 12 chưa được thu gom trong hai ngày. Đề nghị bố trí thu gom và thông báo lịch xe rác.','PENDING',NULL,NULL,'seed-pa-001'),
+      ('PA-2026-002','FEEDBACK',N'u-resident-b',2,3,'FEEDBACK','INFRASTRUCTURE',N'Đèn chiếu sáng',N'Hai bóng đèn trước số nhà 24 đường Hoa Mai không sáng vào buổi tối. Đề nghị kiểm tra và thay thế.','RESPONDED',N'u-officer-a',@Now,'seed-pa-002'),
+      ('PA-2026-003','FEEDBACK',N'u-resident-c',3,4,'FEEDBACK','OTHER',N'Góp ý tổ B',N'Đề nghị sửa khung và bổ sung vị trí niêm yết thông báo tại nhà văn hóa.','PROCESSING',NULL,NULL,'seed-pa-003');
     INSERT dbo.Activities(ActivityType,RequestId,ActorUserId,EventCode,ToStatus,OccurredAt)
       SELECT 'REQUEST_EVENT',Id,SubmittedByUserId,'SUBMITTED','PENDING',SubmittedAt FROM dbo.Requests WHERE Source='RESIDENT';
     INSERT dbo.Activities(ActivityType,RequestId,ActorUserId,EventCode,ToStatus,OccurredAt)
@@ -564,31 +564,31 @@ BEGIN TRY
       SELECT 'REQUEST_EVENT',Id,COALESCE(ProcessedByUserId,CASE AssignedGroupId WHEN 3 THEN N'u-officer-a' ELSE N'u-officer-b' END),
         Status,'PENDING',Status,COALESCE(ProcessedAt,SubmittedAt) FROM dbo.Requests WHERE Source='RESIDENT' AND Status<>'PENDING';
     INSERT dbo.Activities(ActivityType,RequestId,ActorUserId,EventCode,Body,ClientMessageKey)
-      SELECT 'MESSAGE',Id,N'u-officer-a','OFFICIAL_REPLY',N'Phản hồi mẫu: đã tiếp nhận và lên lịch kiểm tra.','seed-msg-001' FROM dbo.Requests WHERE Code='PA-DEMO-002';
+      SELECT 'MESSAGE',Id,N'u-officer-a','OFFICIAL_REPLY',N'Ban điều hành đã tiếp nhận và bố trí kiểm tra hệ thống chiếu sáng trong tuần này.','seed-msg-001' FROM dbo.Requests WHERE Code='PA-2026-002';
     INSERT dbo.Activities(ActivityType,RequestId,ActorUserId,EventCode,Body,ClientMessageKey)
-      SELECT 'MESSAGE',Id,N'u-resident-b','RESIDENT_REPLY',N'Cảm ơn, tôi sẽ theo dõi kết quả.','seed-msg-002' FROM dbo.Requests WHERE Code='PA-DEMO-002';
+      SELECT 'MESSAGE',Id,N'u-resident-b','RESIDENT_REPLY',N'Cảm ơn, tôi sẽ theo dõi kết quả.','seed-msg-002' FROM dbo.Requests WHERE Code='PA-2026-002';
 
     INSERT dbo.FeeCampaigns(Code,ResidentialGroupId,Name,Description,FeeType,DueDate,AmountPerHousehold,CreatedByUserId) VALUES
-      ('THU-DEMO-A01',3,N'Vệ sinh môi trường Demo',N'Khoản thu giả lập để test, không xác nhận nghĩa vụ pháp lý.','REQUIRED',CONVERT(date,DATEADD(day,30,@Now)),100000,N'u-officer-a'),
-      ('THU-DEMO-A02',3,N'Đóng góp cộng đồng Demo',N'Tự nguyện theo hộ; chỉ lập khoản khi hộ đăng ký đóng góp.','VOLUNTARY',NULL,50000,N'u-officer-a'),
-      ('THU-DEMO-B01',4,N'Vệ sinh tổ B Demo',N'Khoản thu giả lập tổ B.','REQUIRED',CONVERT(date,DATEADD(day,30,@Now)),120000,N'u-officer-b');
+      ('THU-2026-A01',3,N'Vệ sinh môi trường',N'Kinh phí thu gom và vận chuyển rác sinh hoạt tháng 11.','REQUIRED',CONVERT(date,DATEADD(day,30,@Now)),100000,N'u-officer-a'),
+      ('THU-2026-A02',3,N'Đóng góp cộng đồng',N'Tự nguyện theo hộ; chỉ lập khoản khi hộ đăng ký đóng góp.','VOLUNTARY',NULL,50000,N'u-officer-a'),
+      ('THU-2026-B01',4,N'Vệ sinh tổ B',N'Kinh phí vệ sinh và chăm sóc cảnh quan khu dân cư tháng 11.','REQUIRED',CONVERT(date,DATEADD(day,30,@Now)),120000,N'u-officer-b');
     INSERT dbo.Payments(CampaignId,HouseholdId,AmountDue,IsPaid,PaidAmount,ReceiptCode,Method,PaidAt,RecordedByUserId,ClientPaymentKey) VALUES
-      (1,1,100000,1,100000,'PT-DEMO-001','CASH',@Now,N'u-collector','seed-payment-001'),
+      (1,1,100000,1,100000,'PT-2026-001','CASH',@Now,N'u-collector','seed-payment-001'),
       (1,2,100000,0,NULL,NULL,NULL,NULL,NULL,NULL),
       (2,1,50000,0,NULL,NULL,NULL,NULL,NULL,NULL),
       (3,3,120000,0,NULL,NULL,NULL,NULL,NULL,NULL);
     INSERT dbo.Announcements(ResidentialGroupId,Title,Body,Audience,Status,CreatedByUserId,PublishedByUserId,PublishedAt) VALUES
-      (3,N'Lịch vệ sinh tổ A Demo',N'Thông báo công khai giả lập.','PUBLIC','PUBLISHED',N'u-officer-a',N'u-officer-a',@Now),
-      (3,N'Lịch họp cư dân tổ A Demo',N'Chỉ cư dân tổ A đã xác minh được đọc.','RESIDENTS','PUBLISHED',N'u-officer-a',N'u-officer-a',@Now),
-      (4,N'Hoạt động tổ B Demo',N'Thông báo công khai tổ B.','PUBLIC','PUBLISHED',N'u-officer-b',N'u-officer-b',@Now),
-      (3,N'Nháp chưa công bố Demo',N'Không xuất hiện ở trang công khai.','PUBLIC','DRAFT',N'u-officer-a',NULL,NULL);
+      (3,N'Lịch vệ sinh tổ A',N'Các hộ dân tập trung tại nhà văn hóa lúc 07 giờ Chủ nhật để vệ sinh đường làng và khơi thông rãnh thoát nước.','PUBLIC','PUBLISHED',N'u-officer-a',N'u-officer-a',@Now),
+      (3,N'Lịch họp cư dân tổ A',N'Chỉ cư dân tổ A đã xác minh được đọc.','RESIDENTS','PUBLISHED',N'u-officer-a',N'u-officer-a',@Now),
+      (4,N'Hoạt động tổ B',N'Thông báo công khai tổ B.','PUBLIC','PUBLISHED',N'u-officer-b',N'u-officer-b',@Now),
+      (3,N'Nháp chưa công bố',N'Không xuất hiện ở trang công khai.','PUBLIC','DRAFT',N'u-officer-a',NULL,NULL);
     UPDATE dbo.Announcements SET ReviewStatus='APPROVED', SubmittedAt=PublishedAt, ReviewedAt=PublishedAt, ReviewedByUserId=PublishedByUserId WHERE Status='PUBLISHED';
     INSERT dbo.Activities(ActivityType,RecipientUserId,EventCode,TargetType,TargetId)
-      SELECT 'NOTIFICATION',N'u-officer-a','RESIDENCE_REQUEST_CREATED','Request',CONVERT(varchar(64),Id) FROM dbo.Requests WHERE Code='YC-DEMO-001';
+      SELECT 'NOTIFICATION',N'u-officer-a','RESIDENCE_REQUEST_CREATED','Request',CONVERT(varchar(64),Id) FROM dbo.Requests WHERE Code='YC-2026-001';
     INSERT dbo.Activities(ActivityType,RecipientUserId,EventCode,TargetType,TargetId)
-      SELECT 'NOTIFICATION',N'u-officer-a','FEEDBACK_CREATED','Request',CONVERT(varchar(64),Id) FROM dbo.Requests WHERE Code='PA-DEMO-001';
+      SELECT 'NOTIFICATION',N'u-officer-a','FEEDBACK_CREATED','Request',CONVERT(varchar(64),Id) FROM dbo.Requests WHERE Code='PA-2026-001';
     INSERT dbo.Activities(ActivityType,RecipientUserId,EventCode,TargetType,TargetId)
-      SELECT 'NOTIFICATION',N'u-resident-b','FEEDBACK_REPLIED','Request',CONVERT(varchar(64),Id) FROM dbo.Requests WHERE Code='PA-DEMO-002';
+      SELECT 'NOTIFICATION',N'u-resident-b','FEEDBACK_REPLIED','Request',CONVERT(varchar(64),Id) FROM dbo.Requests WHERE Code='PA-2026-002';
     INSERT dbo.Activities(ActivityType,RecipientUserId,EventCode,TargetType,TargetId) VALUES
       ('NOTIFICATION',N'u-resident-a','PAYMENT_RECORDED','Payment','1'),
       ('NOTIFICATION',N'u-resident-c','ANNOUNCEMENT_PUBLISHED','Announcement','3');

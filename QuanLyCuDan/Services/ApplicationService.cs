@@ -1,0 +1,106 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using QuanLyCuDan.Auth;
+using QuanLyCuDan.Models;
+
+namespace QuanLyCuDan.Services;
+
+// Shared domain rules; no MVC or HTTP response dependencies.
+public abstract class ApplicationService(MyStockContext context)
+{
+    protected MyStockContext db { get; } = context;
+
+    public static string CurrentUserId(ClaimsPrincipal principal) => principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new AppFault(401, "Bạn cần đăng nhập.");
+    protected IQueryable<VwEffectivePermission> Effective(string userId) => db.VwEffectivePermissions.AsNoTracking().Where(x => x.UserId == userId);
+    protected async Task RequirePermission(ClaimsPrincipal principal, string permission)
+    {
+        if (!await Effective(CurrentUserId(principal)).AnyAsync(x => x.PermissionCode == permission && x.ScopeType == "SYSTEM"))
+            throw new AppFault(403, "Bạn không có quyền thực hiện thao tác này.");
+    }
+
+    // Resource checks keep permission and scope on the SAME assignment.
+    protected Task<bool> CanAccessGroup(string userId, string permission, long groupId) => Effective(userId).AnyAsync(x => x.PermissionCode == permission && ((x.ScopeType == "GROUP" && x.ResidentialGroupId == groupId) || (x.ScopeType == "AREA" && db.ResidentialUnits.Any(g => g.Id == groupId && g.IsActive && g.ParentUnitId == x.ResidentialAreaId))));
+    protected Task<bool> IsAdmin(string userId)
+    {
+        var now = DateTime.UtcNow;
+        return db.UserRoleAssignments.AnyAsync(a => a.UserId == userId && a.Role.Name == "ADMIN" && a.Role.IsActive && a.ScopeType == "SYSTEM" && a.User.IsActive && a.RevokedAt == null && a.ValidFrom <= now && (a.ValidUntil == null || a.ValidUntil > now));
+    }
+
+    protected void Audit(string actor, string action, string type, string id) => db.Activities.Add(new Models.Activity { ActivityType = "AUDIT", ActorUserId = actor, EventCode = action, TargetType = type, TargetId = id, OccurredAt = DateTime.UtcNow });
+
+
+    private static readonly PasswordHasher<AspNetUser> hasher = new();
+    protected static string HashPassword(AspNetUser user, string password) => hasher.HashPassword(user, password);
+    protected static bool VerifyPassword(AspNetUser user, string password)
+    {
+        if (user.PasswordHash is not { } stored)
+            return false;
+        if (!stored.StartsWith("SHA256$", StringComparison.Ordinal))
+        {
+            try
+            {
+                return hasher.VerifyHashedPassword(user, stored, password) != PasswordVerificationResult.Failed;
+            }
+            catch (Exception e) when (e is FormatException or ArgumentException)
+            {
+                return false;
+            }
+        }
+
+        var parts = stored.Split('$');
+        if (parts.Length != 3 || parts[1].Length != 32 || parts[2].Length != 64)
+            return false;
+        try
+        {
+            var salt = Convert.FromHexString(parts[1]);
+            var bytes = Encoding.Unicode.GetBytes(password);
+            var input = salt.Concat(bytes).ToArray();
+            try
+            {
+                return CryptographicOperations.FixedTimeEquals(Convert.FromHexString(parts[2]), SHA256.HashData(input));
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(bytes);
+                CryptographicOperations.ZeroMemory(input);
+            }
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    public static async Task<bool> ValidSession(MyStockContext db, ClaimsPrincipal principal)
+    {
+        var id = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (id == null || !Guid.TryParse(principal.FindFirstValue("sid"), out var sid))
+            return false;
+        return await db.UserSessions.AsNoTracking().AnyAsync(s => s.Id == sid && s.UserId == id && s.RevokedAt == null && s.AbsoluteExpiresAt > DateTime.UtcNow && s.User.IsActive && s.User.VerificationStatus != "PENDING" && s.User.VerificationStatus != "REJECTED" && (s.User.LockoutEnd == null || s.User.LockoutEnd <= DateTimeOffset.UtcNow));
+    }
+
+    protected async Task ProtectLastAdmin(string userId, long? assignmentId)
+    {
+        if (!await IsAdmin(userId))
+            return;
+        var now = DateTime.UtcNow;
+        if (!await db.UserRoleAssignments.AnyAsync(a => (assignmentId == null ? a.UserId != userId : a.Id != assignmentId) && a.Role.Name == "ADMIN" && a.Role.IsActive && a.ScopeType == "SYSTEM" && a.User.IsActive && (a.User.LockoutEnd == null || a.User.LockoutEnd <= DateTimeOffset.UtcNow) && a.RevokedAt == null && a.ValidFrom <= now && (a.ValidUntil == null || a.ValidUntil > now)))
+            throw new AppFault(409, "Không được khóa hoặc thu hồi ADMIN cuối cùng.");
+    }
+
+    protected void SetVersion(object entity, string version)
+    {
+        try
+        {
+            db.Entry(entity).Property("RowVersion").OriginalValue = Convert.FromBase64String(version);
+        }
+        catch (FormatException)
+        {
+            throw new AppFault(400, "RowVersion không hợp lệ.");
+        }
+    }
+
+}

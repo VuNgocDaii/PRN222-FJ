@@ -1,19 +1,19 @@
-# QuanLyCuDan
+﻿# QuanLyCuDan
 
 ASP.NET Core MVC application for resident management, using Razor Views, EF Core and SQL Server. Controllers process ordinary HTML forms and return `View(model)` or redirect after successful writes. There are no JSON API controllers.
+
+Script cài đặt và migrate DB đầy đủ: [database/QuanLyCuDan.sql](database/QuanLyCuDan.sql). Danh sách tài khoản test và mật khẩu: [TAI_KHOAN_TEST.md](TAI_KHOAN_TEST.md).
 
 ## Run locally
 
 1. Install the .NET 8 and .NET 9 SDKs. The main application targets .NET 8; the separate SignalRChat sample targets .NET 9.
-2. Create the COMPACT-2.0 database using `QuanLyCuDan.sql`. The script safely refuses to overwrite an incompatible existing database. Rerun this same script on an existing COMPACT-2.0 database to apply the registration-profile and announcement-review upgrades while preserving data and passwords. For SQL Express, run `sqlcmd -S .\SQLEXPRESS -E -C -b -f 65001 -i QuanLyCuDan.sql`. The `Doc` directory is intentionally excluded from this repository.
+2. Run the complete `database/QuanLyCuDan.sql` installer, which includes the base schema, village migrations and fictional village demo data. Use `sqlcmd -S .\SQLEXPRESS -E -C -b -f 65001 -i database/QuanLyCuDan.sql`. Business data is preserved; the data refresh resets the 17 known seed account passwords to 12345678 once. Other account passwords are preserved. Conflicting business role assignments require explicit resolution. See [village database setup](database/README.md) for migration-only steps and demo logins.
 3. Set `ConnectionStrings:MyStock` in a local `QuanLyCuDan/appsettings.Development.json`, or use the `ConnectionStrings__MyStock` environment variable. Local development settings are ignored by Git. The committed default uses Windows Authentication on localhost.
 4. Run `dotnet run --project QuanLyCuDan --launch-profile http` and open http://localhost:5044/ for the public portal, or http://localhost:5044/Resident for resident services.
 
 For SQL Express, the local development connection string is `Server=.\SQLEXPRESS;Database=QuanLyCuDan;Integrated Security=True;Encrypt=False;TrustServerCertificate=True`. Set it in the ignored development settings file mentioned above. The supplied SQL script contains fictional demo accounts `dan01`, `dan02`, `dan03` with password `12345678`. Approved residents enter `/Resident` after login; system account managers enter `/Admin`.
 
-For a database installed before the resident signup form was added, run `sqlcmd -S .\SQLEXPRESS -E -C -I -b -f 65001 -i database/20261109_RegistrationProfile.sql` once before starting the updated app. This idempotent upgrade adds one nullable column for pending registration details; existing accounts and resident records are preserved. Fresh databases created by the current `QuanLyCuDan.sql` already have the column.
-
-For an existing database, also run `sqlcmd -S .\SQLEXPRESS -E -C -I -b -f 65001 -i database/20261109_AnnouncementReview.sql` before starting the announcement management feature. It adds review fields and `announcements.approve` (GROUP/AREA), assigns the new permission to the seeded OFFICER role, and preserves previously published content. Both upgrade scripts are safe to rerun.
+The updated application requires VILLAGE-3.0 and VILLAGE-3.1. Use the complete installer or the documented migration sequence; the old base script alone does not install the new authorization view. New village demo accounts use `12345678`; the data refresh also normalizes the known legacy sample account passwords once.
 
 ## Public and resident portal
 
@@ -25,11 +25,11 @@ Residence requests apply to the signed-in resident. Moving into or registering i
 
 Only the current head can see assessed household charges and receipts. Residents contact the fee collector to pay; the portal does not mark payments as paid. Required and opted-in voluntary assessments use their saved amounts.
 
-For an APPROVED account missing ResidentId, open Registrations > Approved > Details. The screen suggests an unlinked resident with the same citizen ID (CCCD). Verify the displayed identity and confirm the link; ACCOUNT/RESIDENT roles with SELF scope are granted in the same transaction.
+For an APPROVED account missing ResidentId, open Registrations > Approved > Details. The screen suggests an unlinked resident with the same citizen ID (CCCD). Verify the displayed identity and confirm the link; the ACCOUNT role is replaced by RESIDENT in the same transaction, preserving assignment history and one current role.
 
 New applicants register at `/Account/Register` with their date of birth, gender, optional citizen ID/occupation, address, group and residence type. These details are stored as a typed JSON profile on the pending account; no official resident/household or roles are created at signup. An existing approved account without a linked resident can choose **Bổ sung thông tin cư dân** from `/Account/Profile` and submit the same details at `/Account/ResidentRegistration`. Submission returns that account to PENDING and signs it out until review.
 
-Administrators open Registrations > Pending > Details, compare the submitted information with the existing resident matched by citizen ID (CCCD), confirm the identity, then approve or reject. Approval links that resident, grants ACCOUNT/RESIDENT with SELF scope and records an audit in one transaction. There is no manual resident selector or resident/household creation during review. If CCCD is missing or no unlinked resident matches, approval is blocked: the citizen ID must be supplied and staff must arrange an official resident record first. A standalone staff resident-entry screen is not implemented yet. Reused resident identities, unconfirmed verification and stale or repeated approvals are rejected by the server.
+Administrators open Registrations > Pending > Details and approve or reject. If a matching unlinked resident exists, approval links it and assigns RESIDENT. Otherwise it assigns ACCOUNT without resident access; a verified match can be linked later. Both paths maintain one role and audit history. Reused identities, stale and repeated approvals are rejected. No resident/household record is created by registration review.
 
 Each pending request can receive one optional PDF/JPEG/PNG attachment up to 5 MB. Files are stored under ignored `QuanLyCuDan/.local/attachments`, outside `wwwroot`, with content signature checks, hashes and authorized downloads. Back up this folder together with the database. Seeded attachment metadata does not create physical files.
 
@@ -37,11 +37,11 @@ Each pending request can receive one optional PDF/JPEG/PNG attachment up to 5 MB
 
 Open `/Announcements` or **Quản lý thông báo** in the staff menu. `/Management/announcements` redirects here. Seeded officers such as `canbo01` enter this screen after login. Access is always limited to active GROUP/AREA grants; a SYSTEM admin role alone does not grant access to resident business data.
 
-Workflow: **Soạn nháp → Gửi duyệt → Duyệt hoặc từ chối → Đăng → Gỡ**. The publication state remains DRAFT/PUBLISHED/UNPUBLISHED; review state is tracked separately. Editing an unpublished draft clears its approval, while pending or published content must first be withdrawn or unpublished. Rejection and removal require reasons. Republishing unchanged approved content is allowed; expired content must have a new future expiration and pass review again after editing. Dates entered in the editor are Vietnam time, stored as UTC.
+Workflow: **Soạn nháp → Gửi duyệt → Chấp thuận và tự động đăng / Từ chối → Gỡ**. Only VILLAGE_HEAD and PARTY_SECRETARY can approve or remove content within their village. Either is sufficient; self approval is allowed. Approval, publication, audit and recipient notifications commit in one transaction. There is no manual publish step. Editing content or replacing its PDF clears prior approval.
 
-Permissions are `announcements.read`, `.create`, `.update` (including submit/withdraw), `.approve` (approve/reject), `.publish`, and `.unpublish`. Grant these to staff roles with GROUP or AREA scope. Permissions from different assignments cannot be combined to authorize another group's operation. Users holding all permissions can complete all stages; independent authors/reviewers can be configured through separate roles.
+Each account has one current role. Personal SELF permissions and the role's business GROUP/AREA/SYSTEM boundary coexist in the effective permission view. Optional OrganizationId narrows a GROUP grant to one organization. Organization heads/deputies cannot approve or remove posts. Staff edit/submit their own drafts; village leaders can manage drafts across their village.
 
-The list supports text, group and status filters with pagination. Each detail page includes preview, permitted actions and the latest 50 audit events. Writes use antiforgery protection and row versions. Publication, audit and per-recipient notifications are committed together. PUBLIC announcements appear on the homepage; RESIDENTS announcements are limited to the correct group. Only approved, currently published, unexpired content is shown to readers. Removal takes it off both reader portals immediately; expired content is filtered without a scheduled job. Notifications link to a scoped resident detail page.
+PUBLIC posts appear anonymously; RESIDENTS posts stay within the village; ORGANIZATION posts require current membership and a linked resident within that village. Active date, publication and moderation checks apply to details and document downloads as well as lists. Organization membership is managed at /Organizations. Directive drafts have a deadline and private PDF document; they use the same approval workflow. See [implemented village rules and demo accounts](database/README.md).
 
 Do not commit SQL credentials, signing keys or real resident data. For a stable JWT signing key, supply `Auth__SigningKey` outside source control as base64 containing at least 32 random bytes.
 
@@ -53,7 +53,8 @@ Do not commit SQL credentials, signing keys or real resident data. For a stable 
 - `QuanLyCuDan/Controllers`: MVC actions for public pages, accounts, administration, registration review, resident services, feedback and announcements. Account, role, permission and role-assignment management use server-rendered forms.
 - `BaseController` and `AuthControllerBase`: shared permission checks, cookie sign-in and token lifecycle.
 - `QuanLyCuDan/Auth`: form input contracts, JWT issuer and `JwtCookieHandler`, registered under the `Cookies` scheme for MVC and SignalR.
-- `QuanLyCuDan/Models`: database-first EF Core models and view models.
+- `QuanLyCuDan/Models`: database-first EF Core models and view models; village extensions use partial classes.
+- `QuanLyCuDan/Services`: business rules, permission/scope checks, transactions and EF Core queries.
 - `QuanLyCuDan/wwwroot`: frontend scripts, styles and static assets.
 - `QuanLyCuDan/Hubs`: basic authenticated SignalR connection; `/SignalR` is the connection test page.
 - `SignalRChat`: separate sample project; not required to run the main application's Hub.
@@ -70,7 +71,7 @@ Run the notification management checks against the local fictional demo database
 powershell -ExecutionPolicy Bypass -File .validation/test-notification-management.ps1 -SqlServer localhost
 ```
 
-The runner applies additive upgrades, builds the main app, starts an isolated app on port 5199, and runs MVC JWT authentication and announcement workflow tests. It checks draft/edit/submit/reject/approve/publish/unpublish, permissions, public/private visibility, notification recipients, CSRF and concurrency. Temporary workflow fixtures are cleaned up by the suite, and the runner stops its app and restores environment variables. Logs are saved under `QuanLyCuDan/.local/notification-tests`. Use `-Port` to choose another port or `-SqlServer '.\SQLEXPRESS'` for SQL Express. Requires .NET 8+, Node.js 22+ and `sqlcmd` with Windows Authentication; use demo data only.
+The runner installs and reruns the complete schema on an isolated `QuanLyCuDan_VillageValidation` database, builds the app, and runs village workflow, onboarding, MVC administration and resident regression suites. It restarts the app between suites to respect login rate limits, removes temporary fixtures, and saves logs under `.local/village-tests`. Use `-Database` (must contain VillageValidation), `-Port`, or `-SqlServer` to override defaults. The application database is not migrated by this runner.
 
 ```powershell
 dotnet build QuanLyCuDan.sln
@@ -89,15 +90,16 @@ To test the resident portal against a running app connected to the local fiction
 
 ```powershell
 $env:PORTAL_TEST_SQL_SERVER = '.\SQLEXPRESS'
+$env:PORTAL_TEST_DATABASE = 'QuanLyCuDan_VillageValidation' # must match the app connection
 node .validation/resident-portal-smoke.cjs
 node .validation/registration-onboarding-smoke.cjs
-node .validation/announcements-smoke.cjs
+node .validation/village-workflow-smoke.cjs
 ```
 
 This test creates its own verified resident, household, assessments, announcements and notifications, then checks creation/cancellation, contact concurrency, private replies/files, publication filters, CSRF, ownership, fee visibility and permission denials. It removes its fixture records and attachment in `finally`. It requires Windows Authentication and `sqlcmd`; the SQL server must match the running app. Do not run it against production data.
 
 Optional browser QA: `node .validation/portal-browser.cjs` uses an installed Chrome (`CHROME_PATH` overrides its path), checks desktop/mobile overflow and conditional request fields, and saves screenshots under ignored `QuanLyCuDan/.local`. It signs in with fictional `dan03` by default; override `PORTAL_TEST_USER` and `PORTAL_TEST_PASSWORD` if necessary.
 
-For announcement browser QA, set `$env:PORTAL_BROWSER_MODE = 'announcements'` before running that script. It checks staff navigation, list/detail/editor layouts, and safe live preview without publishing content. The announcement integration test uses isolated temporary writer/reviewer accounts and roles, checks GROUP/AREA isolation, review/publish/removal, edit invalidation, expiry, notification recipients and concurrency, and removes its fixtures afterwards. Run the HTTP smoke suites separately or restart the test app between suites if the shared login rate limit is reached.
+For announcement browser QA, set `$env:PORTAL_BROWSER_MODE = 'announcements'` before running that script. It checks staff navigation, list/detail/editor layouts, and safe live preview without publishing content. The village integration test uses fictional village accounts and removes its temporary content. It checks single-role enforcement, organization isolation, leader-only approval/removal, auto publication, re-review after edits, scoped recipients and documents. Run the HTTP smoke suites separately or restart the test app between suites if the shared login rate limit is reached.
 
 Override `AUTH_TEST_URL`, `AUTH_TEST_USER` and `AUTH_TEST_PASSWORD` through environment variables when needed. The controller test creates and removes a temporary registration in the local demo database. Only use these tests with demo data.
