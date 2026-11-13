@@ -1,0 +1,16 @@
+﻿@model AnnouncementListViewModel
+@{ Layout = "_ManagementLayout"; ViewData["Title"] = "Quản lý thông báo"; var filters = new Dictionary<string,string> { ["ALL"]="Tất cả", ["DRAFT"]="Nháp", ["PENDING"]="Chờ duyệt", ["APPROVED"]="Đã duyệt, chưa đăng", ["REJECTED"]="Bị từ chối", ["PUBLISHED"]="Đã đăng", ["UNPUBLISHED"]="Đã gỡ" }; }
+<header class="page-header"><div><p class="eyebrow">THÔNG TIN CỘNG ĐỒNG</p><h1>Quản lý thông báo</h1><p class="muted">Soạn nội dung, xét duyệt và công bố cho đúng tổ dân phố.</p></div>@if (Model.CanCreate) { <a class="announcement-button primary" href="/Announcements/Create">+ Soạn thông báo</a> }</header>
+<form method="get" class="panel announcement-filter">
+    <label>Tìm kiếm<input name="search" value="@Model.Search" maxlength="200" placeholder="Tiêu đề hoặc nội dung"></label>
+    <label>Tổ dân phố<select name="groupId"><option value="">Tất cả địa bàn được cấp quyền</option>@foreach (var g in Model.Groups) { <option value="@g.Id" selected="@(Model.GroupId == g.Id)">@g.Name</option> }</select></label>
+    <label>Trạng thái<select name="filter">@foreach (var f in filters) { <option value="@f.Key" selected="@(Model.Filter == f.Key)">@f.Value</option> }</select></label>
+    <button type="submit" class="primary">Lọc thông báo</button><a href="/Announcements">Đặt lại</a>
+</form>
+<section class="panel"><div class="section-heading"><h2>Danh sách thông báo</h2><span class="muted small">@Model.Total thông báo</span></div>
+@if (Model.Items.Count == 0) { <p class="empty">Chưa có thông báo phù hợp. Thử thay đổi bộ lọc hoặc soạn thông báo mới.</p> }
+<div class="table-wrap"><table class="announcement-table"><thead><tr><th>Tiêu đề / địa bàn</th><th>Đối tượng</th><th>Duyệt</th><th>Công bố</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead><tbody>
+@foreach (var item in Model.Items) { <tr><td><a href="/Announcements/@item.Id"><strong>@item.Title</strong></a><p class="muted small">@item.ResidentialGroup.Name</p></td><td>@AnnouncementLabels.Audience(item.Audience)</td><td><span class="badge announcement-@item.ReviewStatus.ToLowerInvariant()">@AnnouncementLabels.Review(item.ReviewStatus)</span></td><td>@AnnouncementLabels.Status(item.Status) @if (item.Status == "PUBLISHED" && item.ExpiresAt <= DateTime.UtcNow) { <p class="validation small">Đã hết hạn hiển thị</p> }</td><td>@item.CreatedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</td><td><a href="/Announcements/@item.Id">Xem chi tiết →</a></td></tr> }
+</tbody></table></div>
+@if (Model.Total > 12) { <nav class="announcement-pagination" aria-label="Phân trang thông báo">@if (Model.Page > 1) { <a asp-action="Index" asp-route-page="@(Model.Page-1)" asp-route-search="@Model.Search" asp-route-filter="@Model.Filter" asp-route-groupId="@Model.GroupId">← Trang trước</a> }<span>Trang @Model.Page / @((int)Math.Ceiling(Model.Total/12d))</span>@if (Model.Page*12 < Model.Total) { <a asp-action="Index" asp-route-page="@(Model.Page+1)" asp-route-search="@Model.Search" asp-route-filter="@Model.Filter" asp-route-groupId="@Model.GroupId">Trang sau →</a> }</nav> }
+</section>

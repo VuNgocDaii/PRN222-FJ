@@ -5,6 +5,11 @@ namespace QuanLyCuDan.Models;
 
 public partial class Announcement
 {
+    public string ReviewStatus { get; set; } = "DRAFT";
+    public DateTime? SubmittedAt { get; set; }
+    public string? ReviewedByUserId { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    public string? ReviewNote { get; set; }
     public long Id
     {
         get; set;

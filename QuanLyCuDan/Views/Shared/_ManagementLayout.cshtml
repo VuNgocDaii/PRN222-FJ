@@ -17,6 +17,10 @@
         <aside class="sidebar">
             <a class="brand" href="/Account/Profile"><span class="brand-mark">KDC</span><strong>Quản lý cư dân</strong></a>
             <nav aria-label="Điều hướng chính">
+                @if (ViewData["CanManageAnnouncements"] is true)
+                {
+                    <a href="/Announcements" class="nav-item @(controller == "Announcements" ? "active" : "")">Quản lý thông báo</a>
+                }
                 @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read"))
                 {
                     @if (isAdminPage)
