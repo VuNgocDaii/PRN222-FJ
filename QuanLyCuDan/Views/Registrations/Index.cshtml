@@ -70,8 +70,7 @@
         }
         @if (user.VerificationStatus == "PENDING" || user.VerificationStatus == "APPROVED" && user.ResidentId == null)
         {
-            <h2>@(user.VerificationStatus == "APPROVED" ? "Bổ sung liên kết hồ sơ cư dân" : "Xác minh và phê duyệt")</h2>
-            <form method="post" class="review-form">
+            <form method="post" class="review-form" data-link-only="@(user.VerificationStatus == "APPROVED" ? "true" : "false")">
                 <input type="hidden" name="status" value="@Model.Status">
                 <input type="hidden" name="UserId" value="@user.Id">
                 <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(user.RowVersion)">
@@ -89,17 +88,10 @@
                             <dt>Điện thoại</dt><dd>@matched.PhoneNumber</dd>
                         </dl>
                     </section>
-                    <label class="check"><input type="checkbox" name="Verified" value="true" required>Tôi đã đối chiếu và xác nhận đúng người đăng ký.</label>
                     <p class="muted small">Khi duyệt, hệ thống liên kết hồ sơ và tự cấp quyền cư dân.</p>
                 }
-                else
-                {
-                    <p class="message" role="status">@(string.IsNullOrWhiteSpace(profile?.CitizenId)
-                        ? "Đăng ký chưa cung cấp CCCD. Cần bổ sung CCCD trước khi duyệt."
-                        : "Không tìm thấy hồ sơ chưa liên kết trùng CCCD. Nhờ cán bộ kiểm tra hoặc tạo hồ sơ cư dân trước, rồi tải lại danh sách.")</p>
-                }
                 <div class="inline">
-                    <button type="submit" class="primary" disabled="@(matched == null)">@(user.VerificationStatus == "APPROVED" ? "Xác nhận liên kết" : "Duyệt đăng ký")</button>
+                    <button type="submit" class="primary" disabled="@(matched == null && user.VerificationStatus == "APPROVED")">@(user.VerificationStatus == "APPROVED" ? "Xác nhận liên kết" : "Duyệt đăng ký")</button>
                     @if (user.VerificationStatus == "PENDING") { <button type="button" class="danger" data-review-reject>Từ chối</button> }
                 </div>
             </form>

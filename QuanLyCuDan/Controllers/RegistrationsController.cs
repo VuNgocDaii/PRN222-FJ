@@ -37,7 +37,7 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
         try
         {
             await ReviewRegistration(User, input);
-            TempData["Message"] = input.Approve ? "Đã liên kết hồ sơ và cấp quyền cư dân." : "Đã từ chối đăng ký.";
+            TempData["Message"] = input.Approve ? "Đã duyệt tài khoản. Người dùng có thể đăng nhập." : "Đã từ chối đăng ký.";
         }
         catch (AppFault error) when (error.Status == 400 || error.Status == 404 || error.Status == 409)
         {
@@ -96,8 +96,6 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
 
         if (input.Approve)
         {
-            if (!input.Verified)
-                throw new AppFault(400, "Cần xác nhận đã đối chiếu đúng thông tin cư dân trước khi cấp quyền.");
             await RequirePermission(actor, "roles.assign");
             if (await IsAdmin(user.Id))
                 throw new AppFault(403, "Không liên kết hồ sơ cư dân cho tài khoản quản trị hệ thống.");
@@ -105,21 +103,19 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
                 throw new AppFault(400, "Hãy nhờ cán bộ tạo hồ sơ cư dân trước khi duyệt tài khoản.");
             var profile = RegistrationProfileInput.Read(user.RegistrationProfile);
             var citizenId = profile?.CitizenId?.Trim();
-            if (string.IsNullOrEmpty(citizenId))
-                throw new AppFault(400, "Đăng ký chưa có CCCD. Hãy bổ sung CCCD trước khi duyệt.");
-            var resident = await db.Residents.SingleOrDefaultAsync(r => r.CitizenId == citizenId);
-            if (resident == null)
-                throw new AppFault(400, "Chưa có hồ sơ trùng CCCD. Hãy nhờ cán bộ tạo hồ sơ trước rồi tải lại danh sách.");
-            if (input.ResidentId.HasValue && input.ResidentId != resident.Id)
-                throw new AppFault(400, "Hồ sơ xác nhận không khớp CCCD đăng ký. Hãy tải lại danh sách.");
-            if (await db.AspNetUsers.AnyAsync(u => u.ResidentId == resident.Id && u.Id != user.Id))
-                throw new AppFault(409, "Hồ sơ cư dân này đã liên kết tài khoản khác.");
-            user.ResidentId = resident.Id;
+            var resident = string.IsNullOrEmpty(citizenId) ? null
+                : await db.Residents.SingleOrDefaultAsync(r => r.CitizenId == citizenId
+                    && !db.AspNetUsers.Any(u => u.ResidentId == r.Id && u.Id != user.Id));
+            if (input.ResidentId.HasValue && input.ResidentId != resident?.Id)
+                throw new AppFault(400, "Hồ sơ không khớp hoặc đã liên kết tài khoản khác. Hãy tải lại danh sách.");
+            if (completingLink && resident == null)
+                throw new AppFault(400, "Tài khoản đã được duyệt. Chưa có hồ sơ phù hợp để liên kết thêm.");
+            user.ResidentId = resident?.Id;
             user.VerificationStatus = "APPROVED";
             user.RejectionReason = null;
 
-            var roles = await db.AspNetRoles.Where(r => r.IsActive && (r.Name == "ACCOUNT" || r.Name == "RESIDENT")).ToListAsync();
-            if (roles.Count != 2)
+            var roles = await db.AspNetRoles.Where(r => r.IsActive && (r.Name == "ACCOUNT" || (user.ResidentId != null && r.Name == "RESIDENT"))).ToListAsync();
+            if (roles.Count != (user.ResidentId == null ? 1 : 2))
                 throw new AppFault(400, "Thiếu role ACCOUNT hoặc RESIDENT. Kiểm tra dữ liệu seed.");
             foreach (var role in roles)
             {

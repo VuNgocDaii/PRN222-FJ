@@ -12,7 +12,7 @@
         const forms = [...dialog.querySelectorAll(".review-form")];
         const update = () => forms.forEach(form => {
             const approving = form.elements.Approve.value === "true";
-            form.querySelector('[type="submit"]').disabled = submitting || approving && (!form.elements.ResidentId?.value || !form.elements.Verified?.checked);
+            form.querySelector('[type="submit"]').disabled = submitting || approving && form.dataset.linkOnly === "true" && !form.elements.ResidentId?.value;
         });
         dialog.querySelectorAll("[data-review-close]").forEach(button => button.onclick = () => dialog.close());
         dialog.querySelector("[data-review-reject]")?.addEventListener("click", () => dialog.querySelector(".rejection-form").requestSubmit());
@@ -20,7 +20,7 @@
             form.elements.Verified?.addEventListener("change", update);
             form.addEventListener("submit", event => {
                 const approving = form.elements.Approve.value === "true";
-                if (submitting || approving && (!form.elements.ResidentId?.value || !form.elements.Verified?.checked)) {
+                if (submitting || approving && form.dataset.linkOnly === "true" && !form.elements.ResidentId?.value) {
                     event.preventDefault();
                     return;
                 }
