@@ -10,7 +10,7 @@ public sealed class AnnouncementInput
     [Required, RegularExpression("^(PUBLIC|RESIDENTS)$")] public string Audience { get; set; } = "RESIDENTS";
     // Browser datetime-local values represent Vietnam time, converted explicitly on the server.
     public DateTime? ExpiresAtLocal { get; set; }
-    public string RowVersion { get; set; } = "";
+    public string? RowVersion { get; set; }
 }
 
 public sealed class AnnouncementListViewModel
