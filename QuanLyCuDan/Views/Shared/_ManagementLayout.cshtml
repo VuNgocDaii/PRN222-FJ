@@ -17,7 +17,7 @@
         <aside class="sidebar">
             <a class="brand" href="/Account/Profile"><span class="brand-mark">KDC</span><strong>Quản lý cư dân</strong></a>
             <nav aria-label="Điều hướng chính">
-                <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý</a>
+                <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý @await Component.InvokeAsync("FeedbackCount")</a>
                 @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read"))
                 {
                     @if (isAdminPage)
@@ -85,6 +85,9 @@
     <script src="~/js/action-dialog.js" asp-append-version="true" defer></script>
     <script src="~/js/auth-client.js" asp-append-version="true" defer></script>
     <script src="~/js/password-dialog.js" asp-append-version="true" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="~/js/notification-client.js" asp-append-version="true"></script>
+    <script src="~/js/feedback-nav.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

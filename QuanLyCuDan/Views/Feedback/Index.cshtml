@@ -79,20 +79,12 @@
     <link rel="stylesheet" href="~/css/feedback.css" asp-append-version="true" />
 }
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-    <script src="~/js/notification-client.js" asp-append-version="true"></script>
     <script>
-        const liveStatus = document.getElementById("feedback-live-status");
-        notificationClient.onStatus((message, connected) => {
-            liveStatus.textContent = connected ? "Đang cập nhật trực tiếp" : message;
-            liveStatus.className = "badge " + (connected ? "text-bg-success" : "text-bg-secondary");
-        });
         notificationClient.onFeedback((update) => {
             const notice = document.getElementById("feedback-live-notice");
             notice.textContent = update.message + " Tải lại trang để xem nội dung mới.";
             notice.hidden = false;
             if (Number(update.requestId) === @((Model.Selected?.Id ?? 0))) window.setTimeout(() => window.location.reload(), 1000);
         });
-        notificationClient.start().catch(() => {});
     </script>
 }

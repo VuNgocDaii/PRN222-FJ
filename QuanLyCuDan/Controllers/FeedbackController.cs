@@ -78,7 +78,7 @@ public sealed class FeedbackController(MyStockContext context, IHubContext<Notif
         await db.SaveChangesAsync();
         db.Activities.Add(new Activity { ActivityType = "REQUEST_EVENT", RequestId = request.Id, ActorUserId = userId, EventCode = "SUBMITTED", ToStatus = "PENDING", OccurredAt = now });
         await db.SaveChangesAsync();
-        await hub.Clients.Group(NotificationHub.FeedbackStaffGroup(groupId)).SendAsync("FeedbackChanged", new { requestId = request.Id, message = "Có góp ý mới cần tiếp nhận." });
+        await hub.Clients.Group(NotificationHub.FeedbackStaffGroup(groupId)).SendAsync("FeedbackChanged", new { requestId = request.Id, eventType = "created", message = "Có góp ý mới cần tiếp nhận." });
         return RedirectToAction(nameof(Index), new { id = request.Id, notice = "Đã gửi góp ý." });
     }
 
@@ -95,6 +95,7 @@ public sealed class FeedbackController(MyStockContext context, IHubContext<Notif
             item.Status = "PROCESSING"; item.ProcessedByUserId = userId; item.ProcessedAt = DateTime.UtcNow;
             db.Activities.Add(new Activity { ActivityType = "REQUEST_EVENT", RequestId = id, ActorUserId = userId, EventCode = "ACCEPTED", FromStatus = "PENDING", ToStatus = "PROCESSING", OccurredAt = DateTime.UtcNow });
             await db.SaveChangesAsync();
+            await hub.Clients.Group(NotificationHub.FeedbackStaffGroup(item.AssignedGroupId)).SendAsync("FeedbackChanged", new { requestId = id, eventType = "accepted", message = "Góp ý đã được tiếp nhận." });
             await hub.Clients.Group(NotificationHub.FeedbackUserGroup(item.SubmittedByUserId)).SendAsync("FeedbackChanged", new { requestId = id, message = "Góp ý của bạn đã được tiếp nhận." });
         }
         return RedirectToAction(nameof(Index), new { id });
@@ -115,13 +116,14 @@ public sealed class FeedbackController(MyStockContext context, IHubContext<Notif
         if (item.Status is "CLOSED" or "OUT_OF_SCOPE") return Conflict("Góp ý đã đóng.");
         var now = DateTime.UtcNow;
         var official = staff;
+        var wasPending = item.Status == "PENDING";
         db.Activities.Add(new Activity { ActivityType = "MESSAGE", RequestId = id, ActorUserId = userId,
             EventCode = official ? "OFFICIAL_REPLY" : "RESIDENT_REPLY", Body = body, ClientMessageKey = Guid.NewGuid().ToString("N"), OccurredAt = now });
         if (official) { item.Status = "RESPONDED"; item.ProcessedByUserId = userId; item.ProcessedAt = now; }
         else item.Status = "PROCESSING";
         await db.SaveChangesAsync();
         await hub.Clients.Group(NotificationHub.FeedbackUserGroup(item.SubmittedByUserId)).SendAsync("FeedbackChanged", new { requestId = id, message = "Góp ý có cập nhật mới." });
-        await hub.Clients.Group(NotificationHub.FeedbackStaffGroup(item.AssignedGroupId)).SendAsync("FeedbackChanged", new { requestId = id, message = "Góp ý có cập nhật mới." });
+        await hub.Clients.Group(NotificationHub.FeedbackStaffGroup(item.AssignedGroupId)).SendAsync("FeedbackChanged", new { requestId = id, eventType = official && wasPending ? "accepted" : "updated", message = "Góp ý có cập nhật mới." });
         return RedirectToAction(nameof(Index), new { id });
     }
 }
