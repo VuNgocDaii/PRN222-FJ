@@ -1,0 +1,43 @@
+@model AdminViewModel
+@{
+    var currentId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var selected = Model.SelectedUser;
+    var scopes = new[] { "SYSTEM", "SELF", "AREA", "GROUP" };
+    var returnUrl = Url.Action("Index", "Admin", new { tab = "users", search = Model.Search, page = Model.Page, userId = selected?.Id }) + "#assignments";
+    string ScopeLabel(string scope) => scope switch { "SYSTEM" => "Toàn hệ thống", "SELF" => "Cá nhân", "AREA" => "Khu dân cư", _ => "Tổ dân phố" };
+}
+<div id="assignments">
+    <div class="panel"><h2>Chọn người dùng</h2>
+        <form asp-controller="Admin" asp-action="Index" method="get" data-auto-submit><input name="tab" type="hidden" value="users"><input name="search" type="hidden" value="@Model.Search"><input name="page" type="hidden" value="@Model.Page">
+            <label>Tài khoản<select id="assignment-user" name="userId">
+                @if (selected != null && !Model.Users.Any(u => u.Id == selected.Id)) { <option value="@selected.Id" selected>@selected.UserName — @selected.FullName</option> }
+                @foreach (var account in Model.Users) { <option value="@account.Id" selected="@(account.Id == selected?.Id)">@account.UserName — @account.FullName</option> }
+            </select></label><button class="secondary" data-auto-submit-button>Xem vai trò</button>
+        </form><p class="muted small">Tìm tài khoản trong danh sách để gán vai trò.</p>
+    </div>
+    @if (selected != null && selected.Id != currentId && selected.IsActive) {
+    <div class="panel"><h2>Gán vai trò</h2>
+        <form id="assign-role" class="form-grid" asp-controller="RoleAssignments" asp-action="Assign" method="post" data-role-assignment>
+            <input name="userId" type="hidden" value="@selected.Id"><input name="returnUrl" type="hidden" value="@returnUrl">
+            <label>Vai trò<select name="RoleId" id="assignment-role" required>@foreach (var role in Model.Roles.Where(r => r.IsActive)) {
+                var allowed = scopes.Where(s => role.Permissions.Count > 0 && role.Permissions.All(p => p.PermissionAllowedScopes.Any(a => a.ScopeType == s)));
+                <option value="@role.Id" data-scopes="@string.Join(",", allowed)">@role.DisplayName</option>
+            }</select></label>
+            <label>Phạm vi<select name="ScopeType" id="assignment-scope">@foreach (var scope in scopes) { <option value="@scope">@ScopeLabel(scope)</option> }</select></label>
+            <label>Địa bàn<select name="UnitId" id="assignment-unit"><option value="">Chọn địa bàn</option>@foreach (var unit in Model.Units) { <option value="@unit.Id" data-type="@unit.UnitType">@unit.Name</option> }</select></label>
+            <label>Bắt đầu<input name="ValidFrom" type="datetime-local" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required></label><label>Kết thúc (không bắt buộc)<input name="ValidUntil" type="datetime-local"></label><button class="primary" type="submit">Gán vai trò</button>
+            <p class="form-help admin-form-help" data-assignment-help role="status"></p>
+        </form>
+    </div>
+    } else if (selected != null) { <p class="muted small">@(selected.Id == currentId ? "Không thể tự gán vai trò cho chính mình." : "Không thể gán vai trò cho tài khoản đã khóa.")</p> }
+    <div class="panel"><h2>Vai trò của tài khoản</h2><div class="table-wrap" tabindex="0" aria-label="Vai trò của tài khoản, có thể cuộn ngang"><table><thead><tr><th>Vai trò</th><th>Phạm vi</th><th>Hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="assignment-rows">
+    @foreach (var item in Model.Assignments) {
+        var unit = Model.Units.FirstOrDefault(u => u.Id == (item.ResidentialAreaId ?? item.ResidentialGroupId));
+        var status = item.RevokedAt != null ? "Đã thu hồi" : item.ValidUntil <= DateTime.UtcNow ? "Hết hạn" : item.ValidFrom > DateTime.UtcNow ? "Chưa bắt đầu" : "Có hiệu lực";
+        <tr><td>@item.Role.DisplayName</td><td>@ScopeLabel(item.ScopeType) @unit?.Name</td><td>@item.ValidFrom.ToLocalTime().ToString("dd/MM/yyyy HH:mm") → @(item.ValidUntil?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Không giới hạn")</td><td>@status</td><td>
+        @if (item.RevokedAt == null) { <form asp-controller="RoleAssignments" asp-action="Revoke" asp-route-id="@item.Id" method="post" data-revoke-assignment><input name="userId" type="hidden" value="@selected?.Id"><input name="RowVersion" type="hidden" value="@Convert.ToBase64String(item.RowVersion)"><input name="returnUrl" type="hidden" value="@returnUrl"><label data-revoke-reason>Lý do<input name="Reason" required maxlength="1000"></label><button class="danger">Thu hồi</button></form> }
+        </td></tr>
+    }
+    @if (Model.Assignments.Count == 0) { <tr><td colspan="5" class="empty">Chưa có vai trò được gán.</td></tr> }
+    </tbody></table></div></div>
+</div>

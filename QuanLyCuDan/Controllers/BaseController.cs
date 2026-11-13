@@ -106,13 +106,36 @@ public abstract class BaseController(MyStockContext context) : Controller
         }
     }
 
+    protected async Task<IActionResult> SubmitForm(Func<Task> save, Func<Task<IActionResult>> invalid, Func<IActionResult> success)
+    {
+        var returnUrl = Request.HasFormContentType ? Request.Form["returnUrl"].ToString() : "";
+        var returnToAdmin = Url.IsLocalUrl(returnUrl) && (returnUrl == "/Admin" || returnUrl.StartsWith("/Admin?", StringComparison.Ordinal));
+        if (ModelState.IsValid)
+        {
+            try { await save(); TempData["Message"] = "Đã lưu thay đổi."; return returnToAdmin ? LocalRedirect(returnUrl) : success(); }
+            catch (AppFault error) when (error.Status is 400 or 404 or 409) { ModelState.AddModelError("", error.Message); }
+            catch (DbUpdateConcurrencyException) { ModelState.AddModelError("", "Dữ liệu đã thay đổi. Hãy tải lại trang."); }
+            catch (DbUpdateException error) when (error.InnerException is Microsoft.Data.SqlClient.SqlException sql && sql.Number is 2601 or 2627 or 1205)
+            { ModelState.AddModelError("", "Dữ liệu bị trùng hoặc đã thay đổi. Hãy kiểm tra lại."); }
+        }
+        db.ChangeTracker.Clear();
+        if (returnToAdmin)
+        {
+            TempData["Error"] = string.Join(" ", ModelState.Values.SelectMany(v => v.Errors).Select(e => string.IsNullOrEmpty(e.ErrorMessage) ? "Dữ liệu không hợp lệ." : e.ErrorMessage).Distinct());
+            return LocalRedirect(returnUrl);
+        }
+        return await invalid();
+    }
+
     public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        if (User.Identity?.IsAuthenticated == true && !Request.Path.StartsWithSegments("/api"))
+        if (User.Identity?.IsAuthenticated == true)
         {
             var userId = CurrentUserId(User);
             var access = (await Effective(userId).Where(x => x.ScopeType == "SYSTEM").Select(x => x.PermissionCode).ToListAsync()).ToHashSet();
             ViewData["Permissions"] = access;
+            ViewData["CanUseResident"] = await Effective(userId).AnyAsync(x => x.ScopeType == "SELF" && x.PermissionCode == "profile.self.read");
+            ViewData["CanManageAnnouncements"] = await Effective(userId).AnyAsync(x => (x.ScopeType == "GROUP" || x.ScopeType == "AREA") && x.PermissionCode == "announcements.read");
             ViewData["CanReviewRegistrations"] = access.Contains("accounts.read") && access.Contains("accounts.update") && await IsAdmin(userId);
         }
         await next();

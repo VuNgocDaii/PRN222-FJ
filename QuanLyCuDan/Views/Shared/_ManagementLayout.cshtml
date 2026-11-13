@@ -1,8 +1,8 @@
 @{
     var access = ViewData["Permissions"] as HashSet<string> ?? new HashSet<string>();
-    bool isAdminPage = ViewData["AdminTabs"] is true;
     bool canReview = ViewData["CanReviewRegistrations"] is true;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var adminTab = ViewData["AdminTab"] as string;
 }
 <!doctype html>
 <html lang="vi">
@@ -11,36 +11,31 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>@ViewData["Title"] · Quản lý cư dân</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/app-ui.css" asp-append-version="true">
+    @if (ViewData["AdminTabs"] is true) { <link rel="stylesheet" href="~/css/admin-mvc.css" asp-append-version="true"> }
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Chuyển đến nội dung</a>
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" href="/Account/Profile"><span class="brand-mark">KDC</span><strong>Quản lý cư dân</strong></a>
             <nav aria-label="Điều hướng chính">
-                <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý @await Component.InvokeAsync("FeedbackCount")</a>
-                @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read"))
+                <a href="/" class="nav-item">Trang công khai</a>
+                @if (ViewData["CanManageAnnouncements"] is true)
                 {
-                    @if (isAdminPage)
-                    {
-                        <button data-tab="users" class="nav-item" hidden="@(!access.Contains("accounts.read"))">Tài khoản</button>
-                        <button data-tab="roles" class="nav-item" hidden="@(!access.Contains("roles.read"))">Vai trò</button>
-                        <button data-tab="permissions" class="nav-item" hidden="@(!access.Contains("permissions.read"))">Quyền truy cập</button>
-                    }
-                    else
-                    {
-                        @if (access.Contains("accounts.read"))
-                        {
-                            <a href="/Admin?tab=users" class="nav-item">Tài khoản</a>
-                        }
-                        @if (access.Contains("roles.read"))
-                        {
-                            <a href="/Admin?tab=roles" class="nav-item">Vai trò</a>
-                        }
-                        @if (access.Contains("permissions.read"))
-                        {
-                            <a href="/Admin?tab=permissions" class="nav-item">Quyền truy cập</a>
-                        }
-                    }
+                    <a href="/Announcements" class="nav-item @(controller == "Announcements" ? "active" : "")">Quản lý thông báo</a>
+                }
+                @if (ViewData["CanUseResident"] is true)
+                {
+                    <a href="/Resident" class="nav-item">Cổng cư dân</a>
+                }
+                <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý @await Component.InvokeAsync("FeedbackCount")</a>
+                @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read") || access.Contains("roles.assign"))
+                {
+                    @if (access.Contains("accounts.read")) { <a asp-controller="Admin" asp-action="Index" asp-route-tab="users" data-tab="users" class="nav-item @(adminTab == "users" ? "active" : "")" aria-current="@(adminTab == "users" ? "page" : null)">Tài khoản</a> }
+                    @if (access.Contains("roles.read")) { <a asp-controller="Admin" asp-action="Index" asp-route-tab="roles" data-tab="roles" class="nav-item @(adminTab == "roles" ? "active" : "")" aria-current="@(adminTab == "roles" ? "page" : null)">Vai trò</a> }
+                    @if (access.Contains("permissions.read")) { <a asp-controller="Admin" asp-action="Index" asp-route-tab="permissions" data-tab="permissions" class="nav-item @(adminTab == "permissions" ? "active" : "")" aria-current="@(adminTab == "permissions" ? "page" : null)">Quyền truy cập</a> }
+                    @if (access.Contains("roles.assign") && !access.Contains("accounts.read")) { <a href="/RoleAssignments" class="nav-item @(controller == "RoleAssignments" ? "active" : "")">Gán vai trò</a> }
                 }
                 @if (canReview)
                 {
@@ -55,7 +50,7 @@
                 <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary wide" type="submit">Đăng xuất</button></form>
             </div>
         </aside>
-        <main class="workspace">@RenderBody()</main>
+        <main id="main-content" class="workspace">@if (controller != "Registrations" && controller != "Admin" && TempData["Message"] is string message) { <p class="message success">@message</p> }<div asp-validation-summary="All" class="validation" role="alert"></div>@RenderBody()</main>
     </div>
     <dialog id="password-dialog" class="password-dialog" aria-labelledby="password-dialog-title">
         <div class="section-heading">
@@ -64,7 +59,7 @@
         </div>
         <p class="muted small">Bạn cần đăng nhập lại sau khi đổi mật khẩu.</p>
         <p id="password-notice" class="message error" role="alert" hidden></p>
-        <form id="change-password-form">
+        <form id="change-password-form" asp-controller="Account" asp-action="ChangePassword" method="post">
             <label>Mật khẩu hiện tại<input name="currentPassword" type="password" autocomplete="current-password" required autofocus></label>
             <label>Mật khẩu mới<input name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
             <label>Xác nhận mật khẩu mới<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
@@ -83,11 +78,12 @@
         </form>
     </dialog>
     <script src="~/js/action-dialog.js" asp-append-version="true" defer></script>
-    <script src="~/js/auth-client.js" asp-append-version="true" defer></script>
     <script src="~/js/password-dialog.js" asp-append-version="true" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
     <script src="~/js/notification-client.js" asp-append-version="true"></script>
     <script src="~/js/feedback-nav.js" asp-append-version="true"></script>
+    <script src="~/js/mvc-ui.js" asp-append-version="true" defer></script>
+    <partial name="_SessionToken" />
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

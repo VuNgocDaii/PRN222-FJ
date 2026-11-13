@@ -18,13 +18,13 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public Task<IActionResult> Index(RegistrationReviewInput input)
+    public Task<IActionResult> Index(RegistrationReviewInput input, string status = "PENDING")
     {
-        return Review(input);
+        return Review(input, status);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Review(RegistrationReviewInput input)
+    public async Task<IActionResult> Review(RegistrationReviewInput input, string status = "PENDING")
     {
         await RequireReviewer(User);
         if (!input.Approve && string.IsNullOrWhiteSpace(input.Reason))
@@ -32,12 +32,12 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "Dữ liệu không hợp lệ. Lý do tối đa 1000 ký tự. Hãy tải lại danh sách.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { status });
         }
         try
         {
             await ReviewRegistration(User, input);
-            TempData["Message"] = input.Approve ? "Đã phê duyệt tài khoản cư dân." : "Đã từ chối đăng ký.";
+            TempData["Message"] = input.Approve ? "Đã duyệt tài khoản. Người dùng có thể đăng nhập." : "Đã từ chối đăng ký.";
         }
         catch (AppFault error) when (error.Status == 400 || error.Status == 404 || error.Status == 409)
         {
@@ -47,7 +47,7 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
         {
             TempData["Error"] = "Dữ liệu đã thay đổi. Hãy kiểm tra lại danh sách.";
         }
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { status });
     }
 
     private async Task RequireReviewer(ClaimsPrincipal actor)
@@ -68,6 +68,7 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
             Status = status,
             Users = await db.AspNetUsers.AsNoTracking().Where(u => u.VerificationStatus == status)
                 .OrderByDescending(u => u.CreatedAt).Take(100).ToListAsync(),
+            Groups = await db.ResidentialUnits.AsNoTracking().Where(g => g.UnitType == "GROUP" && g.IsActive && g.ParentUnit != null && g.ParentUnit.IsActive && g.ParentUnit.UnitType == "AREA").OrderBy(g => g.Name).ToListAsync(),
             Residents = await db.Residents.AsNoTracking()
                 .Where(r => !db.AspNetUsers.Any(u => u.ResidentId == r.Id))
                 .OrderBy(r => r.FullName).ToListAsync()
@@ -85,7 +86,8 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
         var user = await db.AspNetUsers.SingleOrDefaultAsync(u => u.Id == input.UserId);
         if (user == null)
             throw new AppFault(404, "Không tìm thấy tài khoản.");
-        if (user.VerificationStatus != "PENDING")
+        var completingLink = user.VerificationStatus == "APPROVED" && user.ResidentId == null && input.Approve;
+        if (user.VerificationStatus != "PENDING" && !completingLink)
             throw new AppFault(409, "Tài khoản đã được xét duyệt. Hãy tải lại danh sách.");
         if (Convert.ToBase64String(user.RowVersion) != input.RowVersion)
             throw new AppFault(409, "Tài khoản đã thay đổi. Hãy tải lại danh sách.");
@@ -94,18 +96,26 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
 
         if (input.Approve)
         {
-            // Quản trị viên đối chiếu thông tin, chọn hồ sơ đã có trong sổ cư dân.
-            var resident = await db.Residents.SingleOrDefaultAsync(r => r.Id == input.ResidentId);
-            if (resident == null)
-                throw new AppFault(400, "Chọn hồ sơ cư dân để liên kết tài khoản.");
-            if (await db.AspNetUsers.AnyAsync(u => u.ResidentId == resident.Id && u.Id != user.Id))
-                throw new AppFault(409, "Hồ sơ cư dân này đã liên kết tài khoản khác.");
-            user.ResidentId = resident.Id;
+            await RequirePermission(actor, "roles.assign");
+            if (await IsAdmin(user.Id))
+                throw new AppFault(403, "Không liên kết hồ sơ cư dân cho tài khoản quản trị hệ thống.");
+            if (input.CreateResident)
+                throw new AppFault(400, "Hãy nhờ cán bộ tạo hồ sơ cư dân trước khi duyệt tài khoản.");
+            var profile = RegistrationProfileInput.Read(user.RegistrationProfile);
+            var citizenId = profile?.CitizenId?.Trim();
+            var resident = string.IsNullOrEmpty(citizenId) ? null
+                : await db.Residents.SingleOrDefaultAsync(r => r.CitizenId == citizenId
+                    && !db.AspNetUsers.Any(u => u.ResidentId == r.Id && u.Id != user.Id));
+            if (input.ResidentId.HasValue && input.ResidentId != resident?.Id)
+                throw new AppFault(400, "Hồ sơ không khớp hoặc đã liên kết tài khoản khác. Hãy tải lại danh sách.");
+            if (completingLink && resident == null)
+                throw new AppFault(400, "Tài khoản đã được duyệt. Chưa có hồ sơ phù hợp để liên kết thêm.");
+            user.ResidentId = resident?.Id;
             user.VerificationStatus = "APPROVED";
             user.RejectionReason = null;
 
-            var roles = await db.AspNetRoles.Where(r => r.IsActive && (r.Name == "ACCOUNT" || r.Name == "RESIDENT")).ToListAsync();
-            if (roles.Count != 2)
+            var roles = await db.AspNetRoles.Where(r => r.IsActive && (r.Name == "ACCOUNT" || (user.ResidentId != null && r.Name == "RESIDENT"))).ToListAsync();
+            if (roles.Count != (user.ResidentId == null ? 1 : 2))
                 throw new AppFault(400, "Thiếu role ACCOUNT hoặc RESIDENT. Kiểm tra dữ liệu seed.");
             foreach (var role in roles)
             {
@@ -129,8 +139,9 @@ public class RegistrationsController(MyStockContext context) : BaseController(co
         user.ReviewedByUserId = reviewerId;
         user.ReviewedAt = DateTime.UtcNow;
         user.PermissionVersion++;
-        Audit(reviewerId, input.Approve ? "REGISTRATION_APPROVED" : "REGISTRATION_REJECTED", "User", user.Id);
+        Audit(reviewerId, completingLink ? "RESIDENT_LINK_COMPLETED" : input.Approve ? "REGISTRATION_APPROVED" : "REGISTRATION_REJECTED", "User", user.Id);
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
     }
+
 }

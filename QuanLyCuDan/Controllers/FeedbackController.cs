@@ -101,6 +101,28 @@ public sealed class FeedbackController(MyStockContext context, IHubContext<Notif
         return RedirectToAction(nameof(Index), new { id });
     }
 
+    [HttpPost("{id:long}/Complete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Complete(long id)
+    {
+        var userId = CurrentUserId(User);
+        var item = await db.Requests.SingleOrDefaultAsync(x => x.Id == id && x.RequestKind == "FEEDBACK");
+        if (item is null) return NotFound();
+        if (!await CanAccessGroup(userId, "feedback.process", item.AssignedGroupId)) return Forbid();
+        if (item.Status is not ("PROCESSING" or "RESPONDED"))
+            return Conflict("Chỉ có thể hoàn tất phản ánh đang xử lý hoặc đã phản hồi.");
+
+        var now = DateTime.UtcNow;
+        var previousStatus = item.Status;
+        item.Status = "CLOSED";
+        db.Activities.Add(new Activity { ActivityType = "REQUEST_EVENT", RequestId = id, ActorUserId = userId,
+            EventCode = "COMPLETED", FromStatus = previousStatus, ToStatus = "CLOSED", OccurredAt = now });
+        await db.SaveChangesAsync();
+        await hub.Clients.Group(NotificationHub.FeedbackUserGroup(item.SubmittedByUserId))
+            .SendAsync("FeedbackChanged", new { requestId = id, message = "Phản ánh của bạn đã hoàn tất." });
+        return RedirectToAction(nameof(Index), new { id });
+    }
+
     [HttpPost("{id:long}/Reply")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reply(long id, string body)

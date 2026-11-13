@@ -1,0 +1,54 @@
+@model List<UserRoleAssignment>
+@{
+    Layout = "_ManagementLayout"; ViewData["Title"] = "Gán vai trò";
+    var accounts = (List<AspNetUser>)ViewData["Accounts"]!;
+    var roles = (List<AspNetRole>)ViewData["Roles"]!;
+    var units = (List<ResidentialUnit>)ViewData["Units"]!;
+    var selectedUser = ViewData["UserId"] as string;
+    var scopes = new[] { "SYSTEM", "SELF", "AREA", "GROUP" };
+}
+<header class="page-header"><h1>Gán vai trò theo phạm vi</h1></header>
+<section class="panel crud-panel">
+    <form asp-action="Index" method="get">
+        <label>Tài khoản<select name="userId" required><option value="">Chọn tài khoản</option>
+        @foreach (var account in accounts) { <option value="@account.Id" selected="@(account.Id == selectedUser)">@account.UserName — @account.FullName</option> }
+        </select></label><button class="primary">Xem vai trò</button>
+    </form>
+</section>
+@if (string.IsNullOrEmpty(selectedUser)) {
+    <p class="muted">Chọn tài khoản để xem các vai trò hiện có hoặc gán vai trò mới.</p>
+} else {
+<section class="panel crud-panel">
+    <h2>Gán vai trò mới</h2>
+    <form asp-action="Assign" method="post" data-role-assignment>
+        <input name="userId" type="hidden" value="@selectedUser">
+        <label>Vai trò<select name="RoleId" required>
+        @foreach (var role in roles) {
+            var allowed = scopes.Where(s => role.Permissions.Count > 0 && role.Permissions.All(p => p.PermissionAllowedScopes.Any(a => a.ScopeType == s)));
+            <option value="@role.Id" data-scopes="@string.Join(",", allowed)">@role.Name — @role.DisplayName</option>
+        }
+        </select></label>
+        <p class="form-help" data-assignment-help role="status"></p>
+        <label>Phạm vi<select name="ScopeType">@foreach (var scope in scopes) { <option>@scope</option> }</select></label>
+        <label>Địa bàn (chỉ AREA/GROUP)<select name="UnitId"><option value="">Chọn địa bàn</option>
+        @foreach (var unit in units) { <option value="@unit.Id" data-type="@unit.UnitType">@unit.UnitType — @unit.Name</option> }
+        </select></label>
+        <div class="role-assignment-dates">
+            <label>Hiệu lực từ<input name="ValidFrom" type="datetime-local" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required></label>
+            <label>Hiệu lực đến (không bắt buộc)<input name="ValidUntil" type="datetime-local"></label>
+        </div>
+        <button class="primary" type="submit">Gán vai trò</button>
+    </form>
+</section>
+@if (Model.Count == 0) { <section class="panel empty">Tài khoản này chưa được gán vai trò.</section> }
+@foreach (var assignment in Model) {
+<section class="panel crud-panel">
+    <h2>@assignment.Role.DisplayName</h2>
+    <p><span class="badge">@assignment.ScopeType</span> @units.FirstOrDefault(u => u.Id == (assignment.ResidentialAreaId ?? assignment.ResidentialGroupId))?.Name</p>
+    <p class="muted small">@assignment.ValidFrom.ToLocalTime().ToString("dd/MM/yyyy HH:mm") → @(assignment.ValidUntil?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Không giới hạn")</p>
+    @if (assignment.RevokedAt == null) {
+        <form asp-action="Revoke" asp-route-id="@assignment.Id" method="post"><input name="userId" type="hidden" value="@selectedUser"><input name="RowVersion" type="hidden" value="@Convert.ToBase64String(assignment.RowVersion)"><label>Lý do thu hồi<input name="Reason" required maxlength="1000"></label><button class="danger">Thu hồi vai trò</button></form>
+    } else { <p>Đã thu hồi: @assignment.RevocationReason</p> }
+</section>
+}
+}

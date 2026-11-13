@@ -1,12 +1,12 @@
 .feedback-heading {
     color: #29251f;
-    background: linear-gradient(110deg, #fff7f1, #f8f4ee);
-    border: 1px solid #eadfd5;
-    border-left: 5px solid #a93b32;
+    background: linear-gradient(110deg, #e9f3ec, #f2f7f3);
+    border: 1px solid #dce5df;
+    border-left: 5px solid #17664f;
 }
 
 .feedback-heading h1 {
-    color: #7d2824;
+    color: #17664f;
     font-weight: 650;
 }
 
@@ -15,7 +15,7 @@
 }
 
 .feedback-eyebrow {
-    color: #8b332c;
+    color: #17664f;
     font-size: .74rem;
     font-weight: 700;
     letter-spacing: .09em;
@@ -23,6 +23,11 @@
 
 .feedback-heading .badge {
     white-space: normal;
+    background: #deeee3;
+    color: #215b38;
+    border: 1px solid #c6dfce;
+    padding: .6rem .8rem;
+    line-height: 1.4;
 }
 
 @media (max-width: 575.98px) {

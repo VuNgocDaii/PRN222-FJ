@@ -34,7 +34,9 @@
                 <td>@user.UserName</td>
                 <td>@(user.PhoneNumber ?? "—")</td>
                 <td>@user.CreatedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</td>
-                <td>@(user.VerificationStatus == "PENDING" ? "Chờ duyệt" : user.VerificationStatus == "APPROVED" ? "Đã duyệt" : "Đã từ chối")</td>
+                <td>@(user.VerificationStatus == "PENDING" ? "Chờ duyệt" : user.VerificationStatus == "APPROVED" ? "Đã duyệt" : "Đã từ chối")
+                    @if (user.VerificationStatus == "APPROVED" && user.ResidentId == null) { <br><span class="badge">Chưa liên kết hồ sơ</span> }
+                </td>
                 <td><button type="button" class="secondary" data-review-open="detail-@user.Id">Xem chi tiết</button></td>
             </tr>
         }
@@ -43,6 +45,8 @@
 </section>
 @foreach (var user in Model.Users)
 {
+    var profile = QuanLyCuDan.Auth.RegistrationProfileInput.Read(user.RegistrationProfile);
+    var matched = Model.MatchResident(profile?.CitizenId);
     <dialog id="detail-@user.Id" class="password-dialog registration-dialog" aria-labelledby="detail-title-@user.Id">
         <div class="section-heading"><h2 id="detail-title-@user.Id">Chi tiết đăng ký</h2><button type="button" class="secondary" data-review-close>Đóng</button></div>
         <header class="section-heading">
@@ -52,38 +56,55 @@
             </div>
             <time class="muted small">@user.CreatedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</time>
         </header>
-        @if (user.VerificationStatus == "PENDING")
+        @if (profile != null)
         {
-            <h2>Xác minh và phê duyệt</h2>
-            <form method="post" class="review-form">
+            <section class="registration-profile"><h2>Thông tin cư dân đã đăng ký</h2><dl>
+                <dt>Ngày sinh</dt><dd>@profile.DateOfBirth?.ToString("dd/MM/yyyy")</dd>
+                <dt>Giới tính</dt><dd>@PortalLabels.Text(profile.Gender)</dd>
+                <dt>CCCD</dt><dd>@(profile.CitizenId ?? "Không cung cấp")</dd>
+                <dt>Nghề nghiệp</dt><dd>@(profile.Occupation ?? "Không cung cấp")</dd>
+                <dt>Địa chỉ</dt><dd>@profile.Address</dd>
+                <dt>Tổ dân phố</dt><dd>@(Model.Groups.FirstOrDefault(g => g.Id == profile.GroupId)?.Name ?? "Tổ không còn hoạt động")</dd>
+                <dt>Cư trú</dt><dd>@PortalLabels.Text(profile.ResidenceStatus)</dd>
+            </dl><p class="muted small">Thông tin do người đăng ký cung cấp, cần đối chiếu trước khi tạo hồ sơ chính thức.</p></section>
+        }
+        @if (user.VerificationStatus == "PENDING" || user.VerificationStatus == "APPROVED" && user.ResidentId == null)
+        {
+            <form method="post" class="review-form" data-link-only="@(user.VerificationStatus == "APPROVED" ? "true" : "false")">
+                <input type="hidden" name="status" value="@Model.Status">
                 <input type="hidden" name="UserId" value="@user.Id">
                 <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(user.RowVersion)">
                 <input type="hidden" name="Approve" value="true">
-                <label>Tìm hồ sơ cư dân<input type="search" class="resident-search" placeholder="Họ tên hoặc số điện thoại"></label>
-                <label>Hồ sơ cư dân chưa liên kết tài khoản
-                    <select name="ResidentId" required>
-                        <option value="">Chọn hồ sơ để xác minh</option>
-                        @foreach (var resident in Model.Residents)
-                        {
-                            <option value="@resident.Id">@resident.FullName · @resident.DateOfBirth.ToString("dd/MM/yyyy") · @resident.PhoneNumber · Mã #@resident.Id</option>
-                        }
-                    </select>
-                </label>
-                @if (Model.Residents.Count == 0)
+                @if (matched != null)
                 {
-                    <p class="muted small">Chưa có hồ sơ cư dân có thể liên kết.</p>
+                    <input type="hidden" name="ResidentId" value="@matched.Id">
+                    <section class="registration-profile">
+                        <h3>Hồ sơ trùng CCCD</h3>
+                        <dl>
+                            <dt>Họ tên</dt><dd>@matched.FullName</dd>
+                            <dt>Ngày sinh</dt><dd>@matched.DateOfBirth.ToString("dd/MM/yyyy")</dd>
+                            <dt>Giới tính</dt><dd>@PortalLabels.Text(matched.Gender)</dd>
+                            <dt>CCCD</dt><dd>@matched.CitizenId</dd>
+                            <dt>Điện thoại</dt><dd>@matched.PhoneNumber</dd>
+                        </dl>
+                    </section>
+                    <p class="muted small">Khi duyệt, hệ thống liên kết hồ sơ và tự cấp quyền cư dân.</p>
                 }
-                <p class="muted small">Nếu chưa có hồ sơ phù hợp, cần bổ sung hồ sơ cư dân trước. Không chọn hồ sơ của người khác để duyệt.</p>
-                <label class="check"><input type="checkbox" name="Verified" required>Tôi đã đối chiếu và xác nhận đúng hồ sơ cư dân.</label>
-                <p class="muted small">Sau khi duyệt, tài khoản được đăng nhập và sử dụng quyền cư dân.</p>
-                <div class="inline"><button type="submit" class="primary" disabled="@(Model.Residents.Count == 0)">Phê duyệt và cấp quyền</button><button type="button" class="danger" data-review-reject>Từ chối đăng ký</button></div>
+                <div class="inline">
+                    <button type="submit" class="primary" disabled="@(matched == null && user.VerificationStatus == "APPROVED")">@(user.VerificationStatus == "APPROVED" ? "Xác nhận liên kết" : "Duyệt đăng ký")</button>
+                    @if (user.VerificationStatus == "PENDING") { <button type="button" class="danger" data-review-reject>Từ chối</button> }
+                </div>
             </form>
+            @if (user.VerificationStatus == "PENDING")
+            {
                 <form method="post" class="review-form rejection-form" hidden>
+                    <input type="hidden" name="status" value="@Model.Status">
                     <input type="hidden" name="UserId" value="@user.Id">
                     <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(user.RowVersion)">
                     <input type="hidden" name="Approve" value="false">
                     <button type="submit">Từ chối đăng ký</button>
                 </form>
+            }
         }
         else if (user.VerificationStatus == "REJECTED")
         {

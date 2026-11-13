@@ -7,41 +7,24 @@ using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
 
 namespace QuanLyCuDan.Controllers;
-[ApiController, Route("api/users")]
-[Authorize(AuthenticationSchemes = "Bearer")]
+[Authorize(AuthenticationSchemes = "Cookies")]
 public sealed class UsersController(MyStockContext context) : BaseController(context)
 {
     [HttpGet]
-    public async Task<IActionResult> List(int page = 1, string? search = null)
+    public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
-        return Ok(await UsersCore(User, page, search));
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Create(UserInput input)
-    {
-        return Ok(await CreateUserCore(User, input));
-    }
-
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, UserEdit input)
-    {
-        await EditUserCore(User, id, input);
-        return NoContent();
-    }
-
-    private async Task<object> UsersCore(ClaimsPrincipal actor, int page, string? search)
-    {
-        await RequirePermission(actor, "accounts.read");
+        await RequirePermission(User, "accounts.read");
         var query = db.AspNetUsers.AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(x => x.UserName.Contains(search) || x.FullName.Contains(search));
-        return new
-        {
-            total = await query.CountAsync(),
-            items = await query.OrderBy(x => x.UserName).Skip((Math.Max(page, 1) - 1) * 30).Take(30).Select(x => new { x.Id, x.UserName, x.FullName, x.IsActive, x.LockoutEnd, x.VerificationStatus, x.RowVersion }).ToListAsync()
-        };
+        if (!string.IsNullOrWhiteSpace(search)) query = query.Where(u => u.UserName.Contains(search) || u.FullName.Contains(search));
+        ViewData["Search"] = search; ViewData["Page"] = Math.Max(1, page); ViewData["Total"] = await query.CountAsync();
+        return View("Index", await query.OrderBy(u => u.UserName).Skip((Math.Max(1, page) - 1) * 30).Take(30).ToListAsync());
     }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Create(UserInput input) => SubmitForm(async () => { await CreateUserCore(User, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Update(string id, UserEdit input) => SubmitForm(async () => { await EditUserCore(User, id, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
 
     private async Task<object> CreateUserCore(ClaimsPrincipal actor, UserInput input)
     {

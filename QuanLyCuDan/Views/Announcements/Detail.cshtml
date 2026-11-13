@@ -1,0 +1,28 @@
+﻿@model AnnouncementDetailViewModel
+@{ Layout = "_ManagementLayout"; ViewData["Title"] = "Chi tiết thông báo"; var a = Model.Item; var version = Convert.ToBase64String(a.RowVersion); }
+<a href="/Announcements" class="announcement-back">← Danh sách thông báo</a>
+<header class="page-header"><div><p class="eyebrow">@a.ResidentialGroup.Name</p><h1>Chi tiết thông báo</h1></div><div class="inline"><span class="badge announcement-@a.ReviewStatus.ToLowerInvariant()">@AnnouncementLabels.Review(a.ReviewStatus)</span><span class="badge">@AnnouncementLabels.Status(a.Status)</span></div></header>
+@if (TempData["AnnouncementMessage"] is string message) { <p class="message success" role="status">@message</p> }
+@if (TempData["AnnouncementError"] is string error) { <p class="message error" role="alert">@error</p> }
+<section class="panel announcement-reading"><h2>@a.Title</h2><p class="muted small">@PortalLabels.Text(a.Audience) · Soạn bởi @a.CreatedByUser.FullName · @a.CreatedAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</p><div class="announcement-prose">@a.Body</div></section>
+<div class="announcement-detail-grid"><section class="panel"><h2>Trạng thái xử lý</h2><dl class="announcement-metadata"><dt>Gửi duyệt</dt><dd>@(a.SubmittedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Chưa gửi")</dd><dt>Ngày duyệt</dt><dd>@(a.ReviewedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Chưa xét duyệt")</dd><dt>Đăng lúc</dt><dd>@(a.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng")</dd><dt>Người đăng</dt><dd>@(a.PublishedByUser?.FullName ?? "Chưa đăng")</dd><dt>Hết hạn</dt><dd>@(a.ExpiresAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Không giới hạn")</dd></dl>
+@if (!string.IsNullOrEmpty(a.ReviewNote)) { <h3>Ý kiến xét duyệt</h3><p class="announcement-prose">@a.ReviewNote</p> }
+@if (!string.IsNullOrEmpty(a.UnpublishReason)) { <h3>Lý do gỡ</h3><p class="announcement-prose">@a.UnpublishReason</p> }
+<p class="muted small">Các thời điểm hiển thị theo giờ Việt Nam.</p>
+</section><section class="panel"><h2>Thao tác</h2><div class="announcement-actions">
+@if (Model.CanEdit) { <a href="/Announcements/@a.Id/Edit" class="announcement-button secondary">Chỉnh sửa nội dung</a> }
+@if (Model.CanSubmit) { <form asp-action="Submit" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><button type="submit" class="primary">Gửi duyệt</button></form> }
+@if (Model.CanWithdraw) { <form asp-action="Withdraw" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><button type="submit" class="secondary">Rút lại để chỉnh sửa</button></form> }
+@if (Model.CanReview)
+{
+    <form asp-action="Review" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><input type="hidden" name="approve" value="true"><label>Ghi chú duyệt (không bắt buộc)<textarea name="note" maxlength="1000" rows="2"></textarea></label><button type="submit" class="primary">Duyệt thông báo</button></form>
+    <details><summary>Từ chối duyệt</summary><form asp-action="Review" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><input type="hidden" name="approve" value="false"><label>Lý do từ chối<textarea name="note" maxlength="1000" rows="3" required></textarea></label><button type="submit" class="danger">Xác nhận từ chối</button></form></details>
+}
+@if (Model.CanPublish) { <form asp-action="Publish" asp-route-id="@a.Id" method="post" data-confirm="Đăng thông báo này cho đối tượng đã chọn?"><input type="hidden" name="rowVersion" value="@version"><button type="submit" class="primary">Đăng thông báo</button></form> }
+@if (Model.CanUnpublish) { <details><summary>Gỡ thông báo</summary><form asp-action="Unpublish" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><label>Lý do gỡ<textarea name="reason" rows="3" maxlength="1000" required></textarea></label><p class="muted small">Sau khi gỡ, thông báo ngừng hiển thị trên trang công khai và cổng cư dân.</p><button type="submit" class="danger">Xác nhận gỡ thông báo</button></form></details> }
+@if (a.Status == "PUBLISHED" && a.ExpiresAt <= DateTime.UtcNow) { <p class="validation">Thông báo đã hết hạn và không còn hiển thị với người đọc. Gỡ bài để chỉnh sửa thời hạn nếu cần đăng lại.</p> }
+@if (a.Status == "PUBLISHED" && a.Audience == "PUBLIC" && (a.ExpiresAt == null || a.ExpiresAt > DateTime.UtcNow)) { <a href="/thong-bao/@a.Id">Xem trên trang công khai →</a> }
+@if (!Model.CanEdit && !Model.CanSubmit && !Model.CanWithdraw && !Model.CanReview && !Model.CanPublish && !Model.CanUnpublish) { <p class="muted">Bạn có quyền xem. Thao tác tiếp theo cần người có quyền phù hợp trong tổ dân phố.</p> }
+</div></section></div>
+<section class="panel"><h2>Lịch sử thao tác</h2>@if (Model.History.Count == 0) { <p class="muted">Chưa có nhật ký được ghi nhận.</p> }<ol class="announcement-history">@foreach (var h in Model.History) { <li><strong>@AnnouncementLabels.Event(h.EventCode)</strong><span>@h.Actor · @h.OccurredAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</span></li> }</ol></section>
+@section Scripts { <script src="~/js/announcement-management.js" asp-append-version="true" defer></script> }

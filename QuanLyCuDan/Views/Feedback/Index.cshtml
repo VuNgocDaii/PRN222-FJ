@@ -59,6 +59,10 @@
                         {
                             <form asp-action="Process" asp-route-id="@selected.Id" method="post" class="mb-3">@Html.AntiForgeryToken()<button class="btn btn-outline-primary" type="submit">Tiếp nhận xử lý</button></form>
                         }
+                        @if (Model.CanManage && (selected.Status is "PROCESSING" or "RESPONDED"))
+                        {
+                            <form asp-action="Complete" asp-route-id="@selected.Id" method="post" class="mb-3">@Html.AntiForgeryToken()<button class="btn btn-success" type="submit">Hoàn tất xử lý</button></form>
+                        }
                         @if ((Model.CanManage || Model.CanSubmit) && selected.Status is not ("CLOSED" or "OUT_OF_SCOPE"))
                         {
                             <form asp-action="Reply" asp-route-id="@selected.Id" method="post">

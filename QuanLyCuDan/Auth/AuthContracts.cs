@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace QuanLyCuDan.Auth;
 
-public sealed record TokenResponse(string AccessToken, int ExpiresIn, string TokenType = "Bearer");
 
 public sealed record LoginInput(
     [Required, StringLength(256)] string UserName,
@@ -34,7 +33,7 @@ public sealed record RoleEdit(
     [Required] string ConcurrencyStamp);
 
 public sealed record PermissionEdit(
-    [Required] int[] PermissionIds,
+    int[]? PermissionIds,
     [Required] string ConcurrencyStamp);
 
 public sealed record PermissionCreateInput(

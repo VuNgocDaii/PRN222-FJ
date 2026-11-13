@@ -1,0 +1,19 @@
+@model List<AspNetRole>
+@{ Layout = "_ManagementLayout"; ViewData["Title"] = "Vai trò"; var access = ViewData["Permissions"] as HashSet<string> ?? new(); var catalog = (List<Permission>)ViewData["Catalog"]!; }
+<header class="page-header"><h1>Quản lý vai trò</h1></header>
+@if (access.Contains("roles.create")) {
+<section class="panel crud-panel"><h2>Tạo vai trò</h2><form asp-action="Create" method="post"><label>Mã vai trò<input name="Name" required pattern="[A-Za-z][A-Za-z0-9_]{1,63}" maxlength="64"></label><label>Tên hiển thị<input name="DisplayName" required maxlength="150"></label><label>Mô tả<textarea name="Description" maxlength="500"></textarea></label><button class="primary">Tạo vai trò</button></form></section>
+}
+@foreach (var role in Model) {
+<section class="panel crud-panel"><h2>@role.DisplayName <span class="badge">@role.Name</span></h2><p>@role.Description</p><p>@(role.IsSystemRole ? "Vai trò hệ thống được bảo vệ" : role.IsActive ? "Hoạt động" : "Đã tắt")</p>
+@if (!role.IsSystemRole && access.Contains("roles.update")) {
+<form asp-action="Update" asp-route-id="@role.Id" method="post"><input name="ConcurrencyStamp" type="hidden" value="@role.ConcurrencyStamp"><label>Tên hiển thị<input name="DisplayName" value="@role.DisplayName" required maxlength="150"></label><label>Mô tả<textarea name="Description" maxlength="500">@role.Description</textarea></label><label><input type="checkbox" name="IsActive" value="true" checked="@role.IsActive"> Hoạt động</label><input type="hidden" name="IsActive" value="false"><button class="primary">Lưu vai trò</button></form>
+}
+<p>Quyền: @string.Join(", ", role.Permissions.Select(p => p.Code))</p>
+@if (!role.IsSystemRole && access.Contains("roles.permissions.update")) {
+<details><summary>Chỉnh sửa quyền của vai trò</summary><form asp-action="Permissions" asp-route-id="@role.Id" method="post"><input name="ConcurrencyStamp" type="hidden" value="@role.ConcurrencyStamp">
+@foreach (var permission in catalog) { <label><input type="checkbox" name="PermissionIds" value="@permission.Id" checked="@role.Permissions.Any(p => p.Id == permission.Id)"> @permission.Code — @permission.Name (@string.Join(", ", permission.PermissionAllowedScopes.Select(s => s.ScopeType)))</label> }
+<button class="primary">Lưu quyền</button></form></details>
+}
+</section>
+}
