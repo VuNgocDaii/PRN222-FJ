@@ -61,7 +61,7 @@
                     <span class="account-name">@User.Identity?.Name</span>
                     <button type="button" class="password-link" id="open-password-dialog">Thay đổi mật khẩu</button>
                 </div>
-                <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary wide" type="submit">Đăng xuất</button></form>
+                <form asp-controller="Account" asp-action="Logout" method="post" onsubmit="localStorage.removeItem('qlcd.accessToken')"><button class="secondary wide" type="submit">Đăng xuất</button></form>
             </div>
         </aside>
         <main class="workspace">@RenderBody()</main>

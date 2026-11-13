@@ -1,4 +1,4 @@
-﻿@{
+@{
     var residentPage = ViewContext.RouteData.Values["controller"]?.ToString() == "Resident";
 }
 <!doctype html>
@@ -19,7 +19,7 @@
             {
                 <a href="/Resident" class="@(residentPage ? "selected" : "")">Cổng cư dân</a>
                 <a href="/Account/Profile">Tài khoản</a>
-                <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary" type="submit">Đăng xuất</button></form>
+                <form asp-controller="Account" asp-action="Logout" method="post" onsubmit="localStorage.removeItem('qlcd.accessToken')"><button class="secondary" type="submit">Đăng xuất</button></form>
             }
             else
             {

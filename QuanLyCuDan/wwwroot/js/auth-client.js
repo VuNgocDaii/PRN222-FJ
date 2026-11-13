@@ -1,9 +1,23 @@
 (() => {
     "use strict";
+    const storageKey = "qlcd.accessToken";
     let bearer, until = 0, pending;
-    function expired() {
+    function clearToken() {
         bearer = undefined;
         until = 0;
+        localStorage.removeItem(storageKey);
+    }
+    function loadToken() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(storageKey));
+            bearer = typeof saved?.accessToken === "string" ? saved.accessToken : undefined;
+            until = Number.isFinite(saved?.expiresAt) ? saved.expiresAt : 0;
+        } catch {
+            clearToken();
+        }
+    }
+    function expired() {
+        clearToken();
         location.assign("/Account/Login");
         return new Error("Phiên đã hết hiệu lực. Hãy đăng nhập lại.");
     }
@@ -33,9 +47,11 @@
         const result = await parse(response);
         bearer = result.accessToken;
         until = Date.now() + Math.max(0, result.expiresIn - 30) * 1000;
+        localStorage.setItem(storageKey, JSON.stringify({ accessToken: bearer, expiresAt: until }));
         return bearer;
     }
     async function token(rejectedToken) {
+        loadToken();
         if (bearer && Date.now() < until && bearer !== rejectedToken) return bearer;
         if (!pending) {
             // Các tab cùng origin tuần tự đổi refresh cookie để tránh dùng lại token cũ.
@@ -59,8 +75,7 @@
         }
         const result = await parse(response);
         if (path === "auth/logout" || path === "auth/change-password") {
-            bearer = undefined;
-            until = 0;
+            clearToken();
         }
         return result;
     };

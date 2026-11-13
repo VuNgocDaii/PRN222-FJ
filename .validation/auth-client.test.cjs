@@ -3,10 +3,11 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const { test } = require('node:test');
 const source = fs.readFileSync('QuanLyCuDan/wwwroot/js/auth-client.js', 'utf8');
-function client(handler) {
+function client(handler, storage = new Map()) {
     const calls = [], redirects = [];
     let now = 0;
     const context = {
+        localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
         window: {}, navigator: { locks: { request: async (_, callback) => callback() } },
         location: { assign: path => redirects.push(path) },
         Date: { now: () => now },
@@ -35,6 +36,23 @@ test('concurrent API calls share refresh; expired token rotates without bootstra
     assert.equal(refreshes, 2);
     assert.ok(!app.calls.some(x => x.path === '/api/auth/token'));
 });
+test('reload reuses persisted token and logout removes it', async () => {
+    const storage = new Map();
+    const handler = async path => {
+        if (path.endsWith('/csrf')) return { body: { token: 'csrf' } };
+        if (path.endsWith('/refresh')) return { body: { accessToken: 'persisted-jwt', expiresIn: 600 } };
+        return { body: { ok: true } };
+    };
+    await client(handler, storage).api('me');
+    assert.equal(JSON.parse(storage.get('qlcd.accessToken')).accessToken, 'persisted-jwt');
+    const reloaded = client(handler, storage);
+    await reloaded.api('me');
+    assert.equal(reloaded.calls.length, 1);
+    assert.equal(reloaded.calls[0].options.headers.Authorization, 'Bearer persisted-jwt');
+    await reloaded.api('auth/logout', 'POST');
+    assert.equal(storage.has('qlcd.accessToken'), false);
+});
+
 test('401 refreshes once then retries with a different access token', async () => {
     let refreshes = 0, requests = 0;
     const app = client(async path => {
