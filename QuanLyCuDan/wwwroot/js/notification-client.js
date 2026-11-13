@@ -2,6 +2,7 @@
 window.notificationClient = (function () {
     let connection;
     let messageCallback = function () {};
+    let feedbackCallback = function () {};
     let statusCallback = function () {};
 
     async function start() {
@@ -20,6 +21,9 @@ window.notificationClient = (function () {
 
         connection.on("ReceiveNotification", function (message) {
             messageCallback(message);
+        });
+        connection.on("FeedbackChanged", function (update) {
+            feedbackCallback(update);
         });
 
         connection.onreconnecting(function () {
@@ -45,17 +49,10 @@ window.notificationClient = (function () {
         }
     }
 
-    async function ping() {
-        if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
-            throw new Error("SignalR chưa kết nối.");
-        }
-        await connection.invoke("Ping");
-    }
-
     return {
         start: start,
-        ping: ping,
         onMessage: function (callback) { messageCallback = callback; },
+        onFeedback: function (callback) { feedbackCallback = callback; },
         onStatus: function (callback) { statusCallback = callback; }
     };
 })();

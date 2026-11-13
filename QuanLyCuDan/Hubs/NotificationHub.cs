@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 using QuanLyCuDan.Controllers;
 using QuanLyCuDan.Models;
 
@@ -16,17 +18,29 @@ public class NotificationHub : Hub
         _db = db;
     }
 
-    // Hàm thử kết nối: chỉ gửi phản hồi về chính người gọi.
-    public async Task Ping()
+    public static string FeedbackUserGroup(string userId) => $"feedback:user:{userId}";
+    public static string FeedbackStaffGroup(long groupId) => $"feedback:staff:{groupId}";
+
+    public override async Task OnConnectedAsync()
     {
-        // Kiểm tra lại vì kết nối có thể vẫn mở sau khi đăng xuất ở tab khác.
-        bool sessionIsValid = await BaseController.ValidSession(_db, Context.User!);
-        if (!sessionIsValid)
+        if (!await BaseController.ValidSession(_db, Context.User!))
         {
             Context.Abort();
-            throw new HubException("Phiên đăng nhập đã hết. Hãy đăng nhập lại.");
+            return;
         }
 
-        await Clients.Caller.SendAsync("ReceiveNotification", "SignalR đã kết nối thành công.");
+        var userId = Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        await Groups.AddToGroupAsync(Context.ConnectionId, FeedbackUserGroup(userId));
+        var grants = await _db.VwEffectivePermissions.AsNoTracking()
+            .Where(x => x.UserId == userId && x.PermissionCode == "feedback.read")
+            .Select(x => new { x.ScopeType, x.ResidentialGroupId, x.ResidentialAreaId }).ToListAsync();
+        foreach (var grant in grants.Where(x => x.ScopeType == "GROUP" && x.ResidentialGroupId != null))
+            await Groups.AddToGroupAsync(Context.ConnectionId, FeedbackStaffGroup(grant.ResidentialGroupId!.Value));
+        var areas = grants.Where(x => x.ScopeType == "AREA" && x.ResidentialAreaId != null).Select(x => x.ResidentialAreaId!.Value).Distinct().ToList();
+        var groupIds = await _db.ResidentialUnits.AsNoTracking().Where(x => x.IsActive && x.ParentUnitId != null && areas.Contains(x.ParentUnitId.Value)).Select(x => x.Id).ToListAsync();
+        foreach (var groupId in groupIds)
+            await Groups.AddToGroupAsync(Context.ConnectionId, FeedbackStaffGroup(groupId));
+        await base.OnConnectedAsync();
     }
+
 }

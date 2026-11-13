@@ -1,0 +1,35 @@
+.feedback-heading {
+    color: #29251f;
+    background: linear-gradient(110deg, #fff7f1, #f8f4ee);
+    border: 1px solid #eadfd5;
+    border-left: 5px solid #a93b32;
+}
+
+.feedback-heading h1 {
+    color: #7d2824;
+    font-weight: 650;
+}
+
+.feedback-heading p {
+    color: #665d55;
+}
+
+.feedback-eyebrow {
+    color: #8b332c;
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+}
+
+.feedback-heading .badge {
+    white-space: normal;
+}
+
+@media (max-width: 575.98px) {
+    .feedback-heading {
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.25rem !important;
+    }
+}
