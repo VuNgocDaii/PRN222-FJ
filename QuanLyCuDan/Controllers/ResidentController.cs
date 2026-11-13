@@ -1,39 +1,99 @@
 ﻿using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
+using QuanLyCuDan.Portal;
 using RequestEntity = QuanLyCuDan.Models.Request;
 namespace QuanLyCuDan.Controllers;
 
 [Authorize(AuthenticationSchemes = "Cookies")]
 [Route("Resident")]
-public sealed class ResidentController(MyStockContext context, IWebHostEnvironment environment) : BaseController(context)
+public sealed class ResidentController(MyStockContext context, IWebHostEnvironment environment, IConfiguration configuration) : BaseController(context)
 {
+    private readonly PortalScope portal = new(context, configuration);
+    private readonly OrganizationReader organizations = new(context);
+    private PortalLocality locality = null!;
+    private AspNetUser? portalAccount;
+    private bool isOnboarding;
+    private static readonly HashSet<string> OnboardingPermissions = ["profile.self.read", "profile.self.update_contact",
+        "residence_requests.self.read", "residence_requests.self.create", "residence_requests.self.cancel", "attachments.self.read", "attachments.self.upload"];
+
+    // Runs for every Resident GET/POST, including attachment downloads and mutations addressed directly by ID.
+    public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        locality = await portal.GetAsync();
+        ViewData["PortalLocality"] = locality;
+        try
+        {
+            var account = await Account();
+            if (!account.IsActive || account.VerificationStatus != "APPROVED") throw OutsidePortal();
+            var resident = Linked(account);
+            if (resident.HouseholdId != null)
+            {
+                CurrentHousehold(account);
+            }
+            else
+            {
+                // No household does not establish membership. Reuse only the existing verified registration/MOVE_IN flow.
+                var profile = RegistrationProfileInput.Read(account.RegistrationProfile);
+                if (resident.ResidenceStatus != "MOVED_OUT" || account.ReviewedAt == null || account.ReviewedByUserId == null ||
+                    profile == null || profile.GroupId != locality.Id || !System.ComponentModel.DataAnnotations.Validator.TryValidateObject(profile,
+                        new System.ComponentModel.DataAnnotations.ValidationContext(profile), new List<System.ComponentModel.DataAnnotations.ValidationResult>(), true))
+                    throw OutsidePortal();
+                isOnboarding = true;
+            }
+        }
+        catch (AppFault error) when (error.Status == 403 && HttpMethods.IsGet(context.HttpContext.Request.Method))
+        {
+            var denied = View("~/Views/Resident/AccessDenied.cshtml");
+            denied.StatusCode = 403;
+            context.Result = denied;
+            return;
+        }
+        await base.OnActionExecutionAsync(context, next);
+    }
+    private static AppFault OutsidePortal() => new(403, "Tài khoản chưa đủ điều kiện sử dụng cổng cư dân của địa bàn phục vụ. Vui lòng liên hệ ban quản lý để xác minh hồ sơ.");
     private static readonly Dictionary<string, string> Sections = new() {
         ["overview"] = "profile.self.read", ["profile"] = "profile.self.read", ["household"] = "households.self.read",
         ["requests"] = "residence_requests.self.read", ["feedback"] = "feedback.self.read",
-        ["fees"] = "fees.self.read", ["announcements"] = "announcements.audience.read", ["notifications"] = "notifications.self.read"
+        ["fees"] = "fees.self.read", ["announcements"] = "announcements.audience.read", ["notifications"] = "notifications.self.read",
+        ["documents"] = "attachments.self.read", ["groups"] = "profile.self.read", ["my-groups"] = "profile.self.read"
     };
     private async Task Check(string permission)
     {
+        if (isOnboarding && !OnboardingPermissions.Contains(permission)) throw OutsidePortal();
         if (!await Effective(CurrentUserId(User)).AnyAsync(p => p.ScopeType == "SELF" && p.PermissionCode == permission))
             throw new AppFault(403, "Bạn chưa được cấp quyền sử dụng chức năng này.");
     }
-    private async Task<AspNetUser> Account() => await db.AspNetUsers.Include(u => u.Resident)!
+    private async Task<AspNetUser> Account() => portalAccount ??= await db.AspNetUsers.Include(u => u.Resident)!
         .ThenInclude(r => r!.Household)!.ThenInclude(h => h!.ResidentialGroup).ThenInclude(g => g.ParentUnit)
         .SingleAsync(u => u.Id == CurrentUserId(User));
     private static Resident Linked(AspNetUser account) => account.Resident ?? throw new AppFault(403, "Tài khoản chưa được liên kết với hồ sơ cư dân. Vui lòng liên hệ ban quản lý.");
-    private static Household CurrentHousehold(AspNetUser account)
+    private Household CurrentHousehold(AspNetUser account)
     {
         var h = Linked(account).Household;
-        if (h == null || h.IsArchived || !h.ResidentialGroup.IsActive || h.ResidentialGroup.UnitType != "GROUP" ||
+        if (h == null || h.ResidentialGroupId != locality.Id || h.IsArchived || !h.ResidentialGroup.IsActive || h.ResidentialGroup.UnitType != "GROUP" ||
             h.ResidentialGroup.ParentUnit is not { IsActive: true, UnitType: "AREA" })
-            throw new AppFault(403, "Bạn chưa có hộ hiện tại trong tổ dân phố đang hoạt động.");
+            throw OutsidePortal();
         return h;
     }
-    private IQueryable<RequestEntity> Mine(string kind) => db.Requests.Where(r => r.SubmittedByUserId == CurrentUserId(User) && r.Source == "RESIDENT" && r.RequestKind == kind);
+    private IQueryable<RequestEntity> OwnedRequests() => db.Requests.Where(r => r.SubmittedByUserId == CurrentUserId(User) &&
+        r.Source == "RESIDENT" && r.AssignedGroupId == locality.Id &&
+        (!isOnboarding || r.RequestKind == "RESIDENCE" && (r.RequestType == "MOVE_IN" || r.RequestType == "ADD_MEMBER")));
+    private IQueryable<RequestEntity> Mine(string kind) => OwnedRequests().Where(r => r.RequestKind == kind);
+    private IQueryable<Activity> MyNotifications()
+    {
+        var userId = CurrentUserId(User);
+        var householdId = portalAccount!.Resident!.HouseholdId;
+        return db.Activities.Where(a => a.ActivityType == "NOTIFICATION" && a.RecipientUserId == userId &&
+            (a.TargetType != "Request" && a.TargetType != "REQUEST" || db.Requests.Any(r => r.Id.ToString() == a.TargetId &&
+                r.AssignedGroupId == locality.Id && r.SubmittedByUserId == userId && r.Source == "RESIDENT")) &&
+            (a.TargetType != "Announcement" || db.Announcements.Any(n => n.Id.ToString() == a.TargetId && n.ResidentialGroupId == locality.Id)) &&
+            (a.TargetType != "Payment" || db.Payments.Any(p => p.Id.ToString() == a.TargetId && p.HouseholdId == householdId && p.Campaign.ResidentialGroupId == locality.Id)));
+    }
 
     [HttpGet("{section?}")]
     public async Task<IActionResult> Index(string section = "overview", int page = 1)
@@ -46,9 +106,22 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
     {
         await Check(Sections[section]);
         var user = await Account();
-        var m = new ResidentPortalViewModel { Section = section, Account = user,
+        var m = new ResidentPortalViewModel { Section = section, Account = user, IsOnboarding = isOnboarding,
             Access = (await Effective(user.Id).Where(p => p.ScopeType == "SELF").Select(p => p.PermissionCode).ToListAsync()).ToHashSet() };
+        if (isOnboarding) m.Access.IntersectWith(OnboardingPermissions);
         var resident = Linked(user);
+        if (section is "groups" or "my-groups")
+        {
+            CurrentHousehold(user); // Householdless onboarding does not grant internal organization access.
+            if (section == "groups") m.Organizations = await organizations.Directory(locality.Id, publicOnly: false);
+            else m.MyOrganizations = await organizations.Mine(resident.Id, locality.Id);
+        }
+        if (section == "documents")
+        {
+            var query = OwnedRequests().AsNoTracking().Where(r => r.AttachmentStorageKey != null);
+            m.Total = await query.CountAsync(); m.Page = ClampPage(page, m.Total);
+            m.Requests = await query.OrderByDescending(r => r.SubmittedAt).ThenByDescending(r => r.Id).Skip((m.Page - 1) * 10).Take(10).ToListAsync();
+        }
         if (section is "household" || (section == "requests" && resident.Household != null))
         {
             var h = CurrentHousehold(user);
@@ -60,15 +133,14 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
             m.Total = await query.CountAsync(); m.Page = ClampPage(page, m.Total);
             m.Requests = await query.OrderByDescending(r => r.SubmittedAt).ThenByDescending(r => r.Id).Skip((m.Page - 1) * 10).Take(10).ToListAsync();
             m.Input.Kind = section == "feedback" ? "FEEDBACK" : "RESIDENCE";
-            m.Input.Type = section == "feedback" ? "OTHER" : "TEMPORARY_ABSENCE";
-            m.Groups = await db.ResidentialUnits.AsNoTracking().Where(g => g.IsActive && g.UnitType == "GROUP" && g.ParentUnit != null && g.ParentUnit.IsActive && g.ParentUnit.UnitType == "AREA").OrderBy(g => g.Name).ToListAsync();
+            m.Input.Type = section == "feedback" ? "OTHER" : isOnboarding ? "MOVE_IN" : "TEMPORARY_ABSENCE";
         }
         if (section == "fees")
         {
             await Check("payments.self.read");
             var h = CurrentHousehold(user);
             if (h.HeadResidentId == resident.Id)
-                m.Payments = await db.Payments.AsNoTracking().Include(p => p.Campaign).Where(p => p.HouseholdId == h.Id).OrderByDescending(p => p.CreatedAt).ToListAsync();
+                m.Payments = await db.Payments.AsNoTracking().Include(p => p.Campaign).Where(p => p.HouseholdId == h.Id && p.Campaign.ResidentialGroupId == locality.Id).OrderByDescending(p => p.CreatedAt).ToListAsync();
         }
         if (section == "announcements")
         {
@@ -81,13 +153,22 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
         }
         if (section == "notifications")
         {
-            var query = db.Activities.AsNoTracking().Where(a => a.ActivityType == "NOTIFICATION" && a.RecipientUserId == user.Id);
+            var query = MyNotifications().AsNoTracking();
             m.Total = await query.CountAsync(); m.Page = ClampPage(page, m.Total);
             m.Notifications = await query.OrderByDescending(a => a.OccurredAt).ThenByDescending(a => a.Id).Skip((m.Page - 1) * 10).Take(10).ToListAsync();
         }
         return m;
     }
     private static int ClampPage(int page, int total) => Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling(total / 10d)));
+
+    [HttpGet("organization/{id:long}")]
+    public async Task<IActionResult> Organization(long id)
+    {
+        await Check("profile.self.read");
+        CurrentHousehold(await Account());
+        var model = await organizations.Detail(id, locality.Id, publicOnly: false);
+        return model == null ? NotFound() : View("~/Views/Community/Detail.cshtml", model);
+    }
 
     [HttpGet("announcement/{id:long}")]
     public async Task<IActionResult> Announcement(long id)
@@ -130,9 +211,10 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
             {
                 await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
                 var account = await Account(); var resident = Linked(account);
-                var groupId = resident.Household != null ? CurrentHousehold(account).ResidentialGroupId : input.GroupId;
-                if (groupId == null || !await db.ResidentialUnits.AnyAsync(g => g.Id == groupId && g.UnitType == "GROUP" && g.IsActive && g.ParentUnit != null && g.ParentUnit.IsActive && g.ParentUnit.UnitType == "AREA"))
-                    throw new AppFault(400, "Chọn tổ dân phố đang hoạt động để tiếp nhận.");
+                var groupId = (await portal.GetAsync()).Id;
+                if (groupId != locality.Id) throw new AppFault(409, "Địa bàn phục vụ vừa thay đổi. Hãy tải lại biểu mẫu.");
+                if (isOnboarding && (feedback || input.Type is not ("MOVE_IN" or "ADD_MEMBER")))
+                    throw new AppFault(400, "Bạn chưa có hộ tại địa bàn phục vụ. Chỉ có thể gửi yêu cầu chuyển đến hoặc đăng ký vào hộ để được xác minh.");
                 if (string.IsNullOrWhiteSpace(input.Subject) || string.IsNullOrWhiteSpace(input.Body))
                     throw new AppFault(400, "Nhập tiêu đề và nội dung yêu cầu.");
                 long? targetId = null;
@@ -163,17 +245,17 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
                 }
                 var fingerprint = System.Text.Json.JsonSerializer.Serialize(new { input.Kind, input.Type, Subject = input.Subject.Trim(), Body = input.Body.Trim(), input.StartDate, input.EndDate, Group = groupId, input.TargetHouseholdCode, input.NewHeadResidentId });
                 var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(fingerprint)));
-                var existing = await db.Requests.Include(r => r.Activities).SingleOrDefaultAsync(r => r.SubmittedByUserId == account.Id && r.ClientRequestKey == input.ClientKey);
+                var existing = await OwnedRequests().Include(r => r.Activities).SingleOrDefaultAsync(r => r.ClientRequestKey == input.ClientKey);
                 if (existing != null)
                 {
                     if (!existing.Activities.Any(a => a.ActivityType == "REQUEST_EVENT" && a.EventCode == "SUBMITTED" && a.SafeMetadata == "{\"payloadHash\":\"" + hash + "\"}"))
                         throw new AppFault(409, "Mã gửi đã được dùng với nội dung khác. Hãy tải lại biểu mẫu.");
                     return RedirectToAction(nameof(Detail), new { id = existing.Id });
                 }
-                if (!feedback && await Mine("RESIDENCE").AnyAsync(r => r.Status == "PENDING" || r.Status == "PROCESSING"))
+                if (!feedback && await db.Requests.AnyAsync(r => r.SubmittedByUserId == account.Id && r.Source == "RESIDENT" && r.RequestKind == "RESIDENCE" && (r.Status == "PENDING" || r.Status == "PROCESSING")))
                     throw new AppFault(409, "Bạn đang có yêu cầu cư trú chờ xử lý. Vui lòng chờ kết quả hoặc hủy yêu cầu đang chờ trước khi gửi mới.");
                 var request = new RequestEntity { Code = "YC-" + Guid.NewGuid().ToString("N")[..24], RequestKind = input.Kind,
-                    Source = "RESIDENT", SubmittedByUserId = account.Id, ResidentId = resident.Id, AssignedGroupId = groupId.Value,
+                    Source = "RESIDENT", SubmittedByUserId = account.Id, ResidentId = resident.Id, AssignedGroupId = groupId,
                     RequestType = feedback ? "FEEDBACK" : input.Type, Category = feedback ? input.Type : null,
                     Subject = input.Subject.Trim(), Body = input.Body.Trim(), StartDate = feedback ? null : input.StartDate,
                     EndDate = feedback ? null : input.EndDate, OriginalHouseholdId = feedback ? null : resident.HouseholdId,
@@ -194,7 +276,7 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
     [HttpGet("request/{id:long}")]
     public async Task<IActionResult> Detail(long id)
     {
-        var request = await db.Requests.AsNoTracking().Include(r => r.AssignedGroup).SingleOrDefaultAsync(r => r.Id == id && r.SubmittedByUserId == CurrentUserId(User) && r.Source == "RESIDENT");
+        var request = await OwnedRequests().AsNoTracking().Include(r => r.AssignedGroup).SingleOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
         await Check(request.RequestKind == "FEEDBACK" ? "feedback.self.read" : "residence_requests.self.read");
         return View(new ResidentRequestDetailViewModel {
@@ -244,7 +326,7 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
     public async Task<IActionResult> MarkRead(long id)
     {
         await Check("notifications.self.mark_read");
-        var notification = await db.Activities.SingleOrDefaultAsync(a => a.Id == id && a.ActivityType == "NOTIFICATION" && a.RecipientUserId == CurrentUserId(User));
+        var notification = await MyNotifications().SingleOrDefaultAsync(a => a.Id == id);
         if (notification == null) return NotFound();
         notification.ReadAt ??= DateTime.UtcNow; await db.SaveChangesAsync();
         return RedirectToAction(nameof(Index), new { section = "notifications" });
@@ -254,7 +336,7 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
     public async Task<IActionResult> Upload(long id, IFormFile? file, string rowVersion)
     {
         await Check("attachments.self.upload");
-        var request = await db.Requests.SingleOrDefaultAsync(r => r.Id == id && r.Source == "RESIDENT" && r.SubmittedByUserId == CurrentUserId(User));
+        var request = await OwnedRequests().SingleOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
         if (request.Status != "PENDING" || request.AttachmentStorageKey != null) throw new AppFault(409, "Chỉ được bổ sung một giấy tờ khi hồ sơ đang chờ tiếp nhận.");
         if (file == null || file.Length is < 1 or > 5242880)
@@ -288,7 +370,7 @@ public sealed class ResidentController(MyStockContext context, IWebHostEnvironme
     public async Task<IActionResult> Download(long id)
     {
         await Check("attachments.self.read");
-        var request = await db.Requests.AsNoTracking().SingleOrDefaultAsync(r => r.Id == id && r.Source == "RESIDENT" && r.SubmittedByUserId == CurrentUserId(User));
+        var request = await OwnedRequests().AsNoTracking().SingleOrDefaultAsync(r => r.Id == id);
         if (request?.AttachmentStorageKey == null || !Guid.TryParseExact(request.AttachmentStorageKey, "N", out _)) return NotFound();
         var path = Path.Combine(environment.ContentRootPath, ".local", "attachments", request.AttachmentStorageKey);
         if (!System.IO.File.Exists(path)) return NotFound();

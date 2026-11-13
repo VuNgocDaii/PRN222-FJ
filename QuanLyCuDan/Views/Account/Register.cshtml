@@ -1,5 +1,5 @@
 ﻿@model QuanLyCuDan.Auth.RegisterInput
-@{ Layout = "_AccountLayout"; ViewData["Title"] = "Đăng ký cư dân"; ViewData["WideAccount"] = true; var groups = ViewData["RegistrationGroups"] as List<ResidentialUnit> ?? new(); }
+@{ Layout = "_ResidentAccountLayout"; ViewData["Title"] = "Đăng ký cư dân"; ViewData["WideAccount"] = true; }
 <h1>Đăng ký cư dân</h1>
 <p class="muted">Điền thông tin cá nhân và nơi cư trú để ban quản lý xác minh. Hồ sơ và quyền cư dân được cấp sau khi phê duyệt.</p>
 <form asp-controller="Account" asp-action="Register" method="post">
@@ -16,7 +16,6 @@
         <label>Mật khẩu<input name="Password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
         <label>Nhập lại mật khẩu<input name="ConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
     </div>
-    <button class="primary wide" type="submit" disabled="@(groups.Count == 0)">Gửi đăng ký chờ duyệt</button>
-    @if (groups.Count == 0) { <p class="validation">Chưa có tổ dân phố đang hoạt động để tiếp nhận đăng ký.</p> }
+    <button class="primary wide" type="submit">Gửi đăng ký chờ duyệt</button>
 </form>
-<p class="footnote">Đã có tài khoản? <a asp-controller="Account" asp-action="Login">Đăng nhập</a></p>
+<p class="footnote">Đã có tài khoản? <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/Resident">Đăng nhập</a></p>

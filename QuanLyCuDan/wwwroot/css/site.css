@@ -1,3 +1,4 @@
+@import url("design-tokens.css");
 html {
   font-size: 14px;
 }
@@ -9,7 +10,7 @@ html {
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--primary);
 }
 
 html {
@@ -18,5 +19,12 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
+  margin:0; background:var(--background);color:var(--text-primary);font-family:var(--font-family);
 }
+.demo-navbar{background:var(--primary-dark);border-top:4px solid var(--accent)}
+:focus-visible{outline:3px solid var(--primary);outline-offset:3px}.demo-navbar :is(a,button):focus-visible{outline-color:var(--accent)}
+:root{--bs-primary:var(--primary);--bs-link-color:var(--primary);--bs-link-hover-color:var(--primary-hover);--bs-body-font-family:var(--font-family);--bs-body-color:var(--text-primary);--bs-body-bg:var(--background);--bs-border-color:var(--border)}
+.btn-primary{--bs-btn-active-bg:var(--primary-dark);--bs-btn-active-border-color:var(--primary-dark)}
+.demo-navbar .navbar-brand,.demo-navbar .nav-link{color:white}.demo-navbar .navbar-brand{white-space:normal;text-align:left;font-size:17px}
+.btn-primary{--bs-btn-bg:var(--primary);--bs-btn-border-color:var(--primary);--bs-btn-hover-bg:var(--primary-hover);--bs-btn-hover-border-color:var(--primary-hover);--bs-btn-disabled-bg:var(--primary);--bs-btn-disabled-border-color:var(--primary)}
+body> .container{min-height:70vh;padding-top:24px}a{color:var(--primary)}footer{background:var(--surface);padding:20px 0}

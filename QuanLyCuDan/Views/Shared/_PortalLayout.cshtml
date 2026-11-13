@@ -1,38 +1,41 @@
-﻿@{
+@{
     var residentPage = ViewContext.RouteData.Values["controller"]?.ToString() == "Resident";
+    var locality = ViewData["PortalLocality"] as QuanLyCuDan.Portal.PortalLocality;
+    var communityPage = ViewContext.RouteData.Values["controller"]?.ToString() == "Community";
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
 }
 <!doctype html>
 <html lang="vi">
 <head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8"><link rel="stylesheet" href="~/css/design-tokens.css" asp-append-version="true"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@ViewData["Title"] · Cổng thông tin cư dân</title>
-    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
-    <link rel="stylesheet" href="~/css/portal.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/community-portal.css" asp-append-version="true">
 </head>
 <body class="portal-body">
     <a href="#main-content" class="skip-link">Chuyển đến nội dung</a>
     <header class="portal-header"><div class="portal-container header-inner">
-        <a href="/" class="portal-brand"><span class="brand-mark">KDC</span><span>Quản lý cư dân<small>Kết nối cộng đồng · Phục vụ cư dân</small></span></a>
-        <nav aria-label="Điều hướng chính">
-            <a href="/" class="@(!residentPage ? "selected" : "")">Trang công khai</a>
+        <a href="/" class="portal-brand"><span class="brand-mark">CĐ</span><span>Cổng thông tin cộng đồng<small>@(locality?.Name ?? "Thông tin & dịch vụ cư dân")</small></span></a>
+        <div class="header-utilities">
             @if (User.Identity?.IsAuthenticated == true)
             {
-                <a href="/Resident" class="@(residentPage ? "selected" : "")">Cổng cư dân</a>
-                <a href="/Account/Profile">Tài khoản</a>
-                <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary" type="submit">Đăng xuất</button></form>
+                <span class="header-account"><partial name="_PortalIcon" model='@("profile")' /> @User.Identity.Name</span>
+                <a class="utility-link" href="/Account/Profile">Tài khoản</a>
+                <form asp-controller="Account" asp-action="Logout" method="post"><button class="header-logout" type="submit">Đăng xuất</button></form>
             }
             else
             {
-                <a href="/Account/Login">Đăng nhập</a><a class="button primary" href="/Account/Register">Đăng ký cư dân</a>
+                <a class="utility-link" href="/Account/Login?returnUrl=%2FResident">Đăng nhập</a><a class="button header-register" href="/Account/Register">Đăng ký cư dân</a>
             }
-        </nav>
-    </div></header>
+        </div>
+    </div><div class="portal-navigation"><div class="portal-container navigation-inner"><button class="mobile-menu-toggle" type="button" aria-controls="portal-main-menu" aria-expanded="false"><partial name="_PortalIcon" model='@("menu")' /> Danh mục</button><nav id="portal-main-menu" aria-label="Điều hướng chính">
+        <a href="/" class="@(!residentPage && !communityPage ? "selected" : "")">Trang chủ</a><a href="/gioi-thieu" class="@(communityPage && action == "About" ? "selected" : "")">Giới thiệu</a><a href="/#announcements">Thông báo</a><a href="/co-cau-to-chuc" class="@(communityPage && (action is "Index" or "Detail") ? "selected" : "")">Cơ cấu tổ chức</a><a href="/hoi-nhom" class="@(communityPage && action == "Groups" ? "selected" : "")">Hội nhóm, đoàn thể</a><a href="/Resident" class="resident-entry @(residentPage ? "selected" : "")"><partial name="_PortalIcon" model='@("profile")' /> Cổng cư dân</a>
+    </nav><span class="locality-indicator">@(locality?.Code)</span></div></div></header>
     <main id="main-content" class="portal-container portal-main">
         @if (TempData["Success"] is string success) { <p class="message success" role="status">@success</p> }
         @if (TempData["Error"] is string error) { <p class="message error" role="alert">@error</p> }
         @RenderBody()
     </main>
-    <footer class="portal-footer"><div class="portal-container"><strong>KDC · Cổng thông tin cư dân</strong><span>Thông tin minh bạch. Cộng đồng gắn kết.</span><a href="/Home/Privacy">Quyền riêng tư</a></div></footer>
+    <footer class="portal-footer"><div class="portal-container footer-inner"><div><strong>Cổng thông tin cộng đồng</strong><p>@(locality?.Name) · Thông tin & dịch vụ dành cho cư dân</p></div><div class="footer-links"><a href="/gioi-thieu">Giới thiệu địa bàn</a><a href="/co-cau-to-chuc">Cơ cấu tổ chức</a><a href="/Home/Privacy">Quyền riêng tư</a></div></div><div class="portal-container footer-bottom">Hệ thống demo học tập · Thông tin nhân sự được công bố theo quyền và dữ liệu đã xác nhận.</div></footer>
     <script src="~/js/portal.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

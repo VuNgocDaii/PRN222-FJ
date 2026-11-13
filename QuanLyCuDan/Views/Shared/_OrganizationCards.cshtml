@@ -1,0 +1,20 @@
+@model OrganizationDirectoryViewModel
+@{ var residentDirectory = ViewData["OrganizationsResident"] is true; var limit = ViewData["OrganizationLimit"] as int? ?? int.MaxValue; }
+@if (Model.Items.Count == 0)
+{
+    <div class="empty-state"><span class="empty-icon"><partial name="_PortalIcon" model='@("organization")' /></span><h3>@(Model.IsAvailable ? "Chưa có tổ chức phù hợp" : "Thông tin tổ chức đang được cập nhật")</h3><p>Thông tin được xác nhận của địa bàn sẽ hiển thị tại đây.</p></div>
+}
+else
+{
+    <div class="organization-grid">
+    @foreach (var item in Model.Items.Take(limit))
+    {
+        <article class="organization-card" data-organization-id="@item.Id">
+            <div class="organization-card-top"><span class="organization-icon"><partial name="_PortalIcon" model='@(item.Kind is "ASSOCIATION" or "SOCIAL" ? "groups" : "organization")' /></span><span class="category-tag">@OrganizationKinds.Text(item.Kind)</span></div>
+            <h3><a href="@(residentDirectory ? "/Resident/organization/" : "/to-chuc/")@item.Id">@item.Name</a></h3>
+            <p>@(string.IsNullOrWhiteSpace(item.Description) ? "Xem cơ cấu, chức danh và thông tin được phép công bố." : item.Description)</p>
+            <a class="read-more" href="@(residentDirectory ? "/Resident/organization/" : "/to-chuc/")@item.Id">Xem chi tiết <partial name="_PortalIcon" model='@("arrow")' /></a>
+        </article>
+    }
+    </div>
+}

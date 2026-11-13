@@ -7,15 +7,15 @@
 <!doctype html>
 <html lang="vi">
 <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8"><link rel="stylesheet" href="~/css/design-tokens.css" asp-append-version="true">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>@ViewData["Title"] · Quản lý cư dân</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
 </head>
-<body>
+<body class="management-page">
     <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" href="/Account/Profile"><span class="brand-mark">KDC</span><strong>Quản lý cư dân</strong></a>
+            <a class="brand" href="/Account/Profile"><span class="brand-mark">CĐ</span><strong>Quản lý cư dân</strong></a>
             <nav aria-label="Điều hướng chính">
                 <a href="/" class="nav-item">Trang công khai</a>
                 @if (ViewData["CanManageAnnouncements"] is true)
@@ -63,7 +63,7 @@
                 <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary wide" type="submit">Đăng xuất</button></form>
             </div>
         </aside>
-        <main class="workspace">@RenderBody()</main>
+        <main class="workspace"><div class="demo-banner">Hệ thống demo học tập · Quản lý cư dân</div>@RenderBody()<footer class="management-footer">Cổng thông tin cộng đồng · Hệ thống demo</footer></main>
     </div>
     <dialog id="password-dialog" class="password-dialog" aria-labelledby="password-dialog-title">
         <div class="section-heading">

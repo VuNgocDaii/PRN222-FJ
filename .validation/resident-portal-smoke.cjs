@@ -8,6 +8,10 @@ const path = require('node:path');
 const base = process.env.AUTH_TEST_URL || 'http://127.0.0.1:5098';
 const server = process.env.PORTAL_TEST_SQL_SERVER;
 if (!server) throw new Error('Set PORTAL_TEST_SQL_SERVER explicitly; use a local DEMO database only.');
+const groupCode = process.env.PORTAL_TEST_GROUP_CODE;
+const otherUser = process.env.PORTAL_TEST_OTHER_USER;
+if (!groupCode || !/^[A-Za-z0-9_-]{1,30}$/.test(groupCode) || !otherUser)
+    throw new Error('Set PORTAL_TEST_GROUP_CODE to the configured portal locality and PORTAL_TEST_OTHER_USER to an existing non-head resident of that same locality.');
 const fixture = 'portal_' + randomUUID().replaceAll('-', '');
 function sql(query) {
     const result = spawnSync('sqlcmd', ['-S', server, '-d', 'QuanLyCuDan', '-E', '-C', '-I', '-b', '-h', '-1', '-y', '4000', '-w', '65535', '-Q', 'SET NOCOUNT ON; ' + query], { encoding: 'utf8' });
@@ -43,7 +47,7 @@ let initialized = false;
 (async () => {
     assert.equal(sql("SELECT COUNT(*) FROM SchemaVersions WHERE VersionCode='COMPACT-2.0'"), '1');
     sql(`SET XACT_ABORT ON; BEGIN TRAN;
-        DECLARE @group bigint=(SELECT h.ResidentialGroupId FROM AspNetUsers u JOIN Residents r ON r.Id=u.ResidentId JOIN Households h ON h.Id=r.HouseholdId WHERE u.UserName='dan03');
+        DECLARE @group bigint=(SELECT g.Id FROM ResidentialUnits g JOIN ResidentialUnits a ON a.Id=g.ParentUnitId WHERE g.Code='${groupCode}' AND g.UnitType='GROUP' AND g.IsActive=1 AND a.UnitType='AREA' AND a.IsActive=1);
         IF @group IS NULL THROW 51000,'Expected fictional demo data',1;
         INSERT AspNetUsers(Id,UserName,NormalizedUserName,FullName,PasswordHash,SecurityStamp,ConcurrencyStamp,VerificationStatus,PhoneNumber)
             SELECT '${fixture}','${fixture}',UPPER('${fixture}'),'Portal Test',PasswordHash,CONVERT(nvarchar(36),NEWID()),CONVERT(nvarchar(36),NEWID()),'APPROVED','0900000000' FROM AspNetUsers WHERE UserName='dan03';
@@ -143,7 +147,7 @@ let initialized = false;
     const notificationId=sql(`SELECT Id FROM Activities WHERE ActivityType='NOTIFICATION' AND RecipientUserId='${fixture}'`);
     assert.equal((await post(resident,'/Resident/notifications/'+notificationId+'/read',csrf(noticePage),{})).status,302);
     assert.equal(sql(`SELECT COUNT(*) FROM Activities WHERE Id=${notificationId} AND ReadAt IS NOT NULL`),'1');
-    const outsider=browser(); await login(outsider,'dan02');
+    const outsider=browser(); await login(outsider,otherUser);
     assert.equal((await outsider(feedbackUrl)).status,404); assert.equal((await outsider(feedbackUrl+'/attachment')).status,404);
     const outsiderPage=await html(outsider,'/Resident/notifications');
     assert.equal((await post(outsider,'/Resident/notifications/'+notificationId+'/read',csrf(outsiderPage),{})).status,404);

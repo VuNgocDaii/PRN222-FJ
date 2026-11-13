@@ -1,0 +1,21 @@
+@model OrganizationDetailViewModel
+@{ Layout = "_PortalLayout"; ViewData["Title"] = Model.Organization.Name; var locality = (QuanLyCuDan.Portal.PortalLocality)ViewData["PortalLocality"]!; }
+<nav class="breadcrumb" aria-label="Đường dẫn"><a href="/">Trang chủ</a><span>/</span><a href="@(Model.IsResident ? "/Resident/groups" : "/co-cau-to-chuc")">Cơ cấu tổ chức</a><span>/</span><span>@Model.Organization.Name</span></nav>
+<header class="organization-detail-heading"><span class="organization-icon large"><partial name="_PortalIcon" model='@("organization")' /></span><div><p class="eyebrow">@locality.Name · @OrganizationKinds.Text(Model.Organization.Kind)</p><h1>@Model.Organization.Name</h1>@if (Model.Organization.Description != null) { <p class="prose">@Model.Organization.Description</p> }</div></header>
+@if (Model.SourceNote != null) { <aside class="information-note"><partial name="_PortalIcon" model='@("document")' /><p>@Model.SourceNote</p></aside> }
+<section class="panel"><div class="section-heading"><div><p class="eyebrow">CƠ CẤU THEO TÀI LIỆU</p><h2>Chức danh & nhân sự</h2></div></div><p class="muted small">Định mức theo tài liệu không thể hiện số người thực tế đang đảm nhiệm. Chỉ công bố tên người đã được xác nhận và cho phép công khai.</p>
+@if (Model.Positions.Count == 0)
+{
+    <div class="empty-state"><h3>Chưa cập nhật thông tin chức danh</h3><p>Chưa có cơ cấu chức danh và nhân sự được xác định trong tài liệu.</p></div>
+}
+else
+{
+    <div class="table-scroll organization-positions"><table class="position-table"><thead><tr><th>Chức danh</th><th>Định mức theo tài liệu</th><th>Nhân sự được công khai</th></tr></thead><tbody>
+    @foreach (var position in Model.Positions)
+    {
+        <tr><td><strong>@position.Name</strong>@if (position.NeedsClarification) { <span class="badge status-pending">Cần xác nhận</span> }@if (position.SourceNote != null) { <p class="muted small">@position.SourceNote</p> }</td><td data-label="Định mức theo tài liệu">@position.Quota</td><td data-label="Nhân sự được công khai">@if (position.PublishedNames.Count == 0) { <span class="muted">Chưa cập nhật thông tin</span> } else { <ul class="published-names">@foreach (var name in position.PublishedNames) { <li>@name</li> }</ul> }</td></tr>
+    }
+    </tbody></table></div>
+}
+</section>
+<a class="button secondary" href="@(Model.IsResident ? "/Resident/groups" : "/co-cau-to-chuc")">← Trở về danh sách</a>

@@ -4,6 +4,8 @@ const {randomUUID}=require('node:crypto');
 const {spawnSync}=require('node:child_process');
 const base=process.env.AUTH_TEST_URL||'http://127.0.0.1:5099';
 if(!process.env.PORTAL_TEST_SQL_SERVER)throw new Error('Set PORTAL_TEST_SQL_SERVER to the local demo server used by the app.');
+const groupCode=process.env.PORTAL_TEST_GROUP_CODE;
+if(!groupCode || !/^[A-Za-z0-9_-]{1,30}$/.test(groupCode))throw new Error('Set PORTAL_TEST_GROUP_CODE to the explicitly configured portal locality.');
 const prefix='onboard_'+randomUUID().replaceAll('-','');
 const names=[prefix+'_head',prefix+'_member',prefix+'_legacy'];
 function sql(query){const r=spawnSync('sqlcmd',['-S',process.env.PORTAL_TEST_SQL_SERVER,'-d','QuanLyCuDan','-E','-C','-I','-b','-h','-1','-y','4000','-w','65535','-Q','SET NOCOUNT ON; '+query],{encoding:'utf8'});if(r.status!==0)throw new Error(r.stderr||r.stdout);return r.stdout.trim();}
@@ -18,10 +20,12 @@ const residentFor=name=>sql(`SELECT ResidentId FROM AspNetUsers WHERE UserName='
 async function reviewData(admin,name){const html=await page(admin,'/Registrations');const id=idFor(name);const start=html.indexOf('id="detail-'+id+'"');assert.ok(start>=0);const dialog=html.slice(start,html.indexOf('</dialog>',start));return {dialog,token:csrf(dialog),form:{UserId:id,RowVersion:input(dialog,'RowVersion'),Approve:'true',Verified:'true',CreateResident:'true'}};}
 (async()=>{
     assert.equal(sql("SELECT COUNT(*) FROM SchemaVersions WHERE VersionCode='COMPACT-2.0'"),'1');
-    const group=sql("SELECT TOP(1) g.Id FROM ResidentialUnits g JOIN ResidentialUnits a ON a.Id=g.ParentUnitId WHERE g.UnitType='GROUP' AND g.IsActive=1 AND a.UnitType='AREA' AND a.IsActive=1 ORDER BY g.Id");
+    const group=sql(`SELECT g.Id FROM ResidentialUnits g JOIN ResidentialUnits a ON a.Id=g.ParentUnitId WHERE g.Code='${groupCode}' AND g.UnitType='GROUP' AND g.IsActive=1 AND a.UnitType='AREA' AND a.IsActive=1`);
+    assert.ok(/^\d+$/.test(group),'Configured portal locality must exist and be active');
     const visitor=browser();
     const signup=await page(visitor,'/Account/Register');
-    for(const field of ['DateOfBirth','Gender','CitizenId','Address','GroupId'])assert.ok(signup.includes(`name="${field}"`));
+    for(const field of ['DateOfBirth','Gender','CitizenId','Address'])assert.ok(signup.includes(`name="${field}"`));
+    assert.ok(!signup.includes('name="GroupId"'),'Signup locality must be assigned by the server');
     const fields={UserName:names[0],FullName:prefix+' Head',PhoneNumber:'0901234567',DateOfBirth:'1990-02-03',Gender:'OTHER',Occupation:'Fictional test',Address:prefix+' address',GroupId:group,ResidenceStatus:'TEMPORARY',Password:'OnlyTest!123456',ConfirmPassword:'OnlyTest!123456'};
     const invalid=await post(visitor,'/Account/Register',csrf(signup),{...fields,DateOfBirth:'2999-01-01',CitizenId:'123'});
     assert.equal(invalid.status,200);assert.equal(idFor(names[0]),'');

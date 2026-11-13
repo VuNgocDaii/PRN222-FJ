@@ -1,28 +1,29 @@
 ﻿@model PublicHomeViewModel
-@{ Layout = "_PortalLayout"; ViewData["Title"] = "Trang công khai"; }
+@{ Layout = "_PortalLayout"; ViewData["Title"] = "Trang công khai"; var locality = (QuanLyCuDan.Portal.PortalLocality)ViewData["PortalLocality"]!; }
 <section class="community-hero">
-    <div><p class="eyebrow">CỔNG THÔNG TIN CỘNG ĐỒNG</p><h1>Một nơi kết nối.<br>Một cộng đồng gắn kết.</h1><p>Cập nhật thông báo từ tổ dân phố, thực hiện yêu cầu cư trú và gửi ý kiến đến ban quản lý một cách thuận tiện.</p><div class="hero-actions"><a href="/Resident" class="button primary">Vào cổng cư dân <span aria-hidden="true">↗</span></a><a href="#announcements" class="button secondary">Xem thông báo</a></div></div>
-    <div class="community-art" aria-hidden="true"><div class="art-sun"></div><div class="art-building building-one"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="art-building building-two"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="art-building building-three"><i></i><i></i><i></i><i></i></div><div class="art-tree tree-one"></div><div class="art-tree tree-two"></div><div class="art-ground"></div><span class="art-caption">Cùng xây dựng nơi đáng sống</span></div>
+    <div class="hero-copy"><p class="eyebrow"><span class="gold-dot"></span> @locality.Name · CỔNG THÔNG TIN CỘNG ĐỒNG</p><h1>Thông tin cộng đồng.<br>Dịch vụ dành cho bạn.</h1><p>Cập nhật thông báo, kết nối các hội nhóm và thực hiện yêu cầu cư trú tại @locality.Name.</p><div class="hero-actions"><a href="/Resident" class="button hero-primary">Vào cổng cư dân <partial name="_PortalIcon" model='@("arrow")' /></a><a href="/gioi-thieu" class="button hero-secondary">Tìm hiểu địa bàn</a></div><p class="hero-footnote">Thông tin theo địa bàn · Dữ liệu cá nhân theo quyền truy cập</p></div>
+    <aside class="hero-locality-card"><div class="locality-card-emblem"><partial name="_PortalIcon" model='@("household")' /></div><span class="card-kicker">ĐỊA BÀN PHỤC VỤ</span><h2>@locality.Name</h2><dl><dt>Mã địa bàn</dt><dd>@locality.Code</dd><dt>Loại địa bàn</dt><dd>@locality.TypeLabel</dd></dl><a href="/co-cau-to-chuc">Khám phá cơ cấu tổ chức <partial name="_PortalIcon" model='@("arrow")' /></a></aside>
 </section>
 <section class="service-grid" aria-label="Dịch vụ cư dân">
-    <a href="/Resident/requests" class="service-card"><span class="service-icon" aria-hidden="true">01</span><div><h2>Yêu cầu cư trú</h2><p>Gửi hồ sơ, theo dõi tiến độ xử lý.</p></div><span aria-hidden="true">↗</span></a>
-    <a href="/Resident/feedback" class="service-card"><span class="service-icon" aria-hidden="true">02</span><div><h2>Phản ánh & góp ý</h2><p>Đóng góp ý kiến cho cộng đồng.</p></div><span aria-hidden="true">↗</span></a>
-    <a href="/Resident/fees" class="service-card"><span class="service-icon" aria-hidden="true">03</span><div><h2>Khoản thu của hộ</h2><p>Chủ hộ tra cứu nghĩa vụ và biên nhận.</p></div><span aria-hidden="true">↗</span></a>
+    <a href="/Resident/requests" class="service-card"><span class="service-icon"><partial name="_PortalIcon" model='@("request")' /></span><div><h2>Yêu cầu cư trú</h2><p>Gửi hồ sơ, theo dõi tiến độ.</p></div><span aria-hidden="true">↗</span></a>
+    <a href="/Resident/feedback" class="service-card"><span class="service-icon"><partial name="_PortalIcon" model='@("feedback")' /></span><div><h2>Phản ánh & góp ý</h2><p>Trao đổi về vấn đề cộng đồng.</p></div><span aria-hidden="true">↗</span></a>
+    <a href="/Resident/fees" class="service-card"><span class="service-icon"><partial name="_PortalIcon" model='@("fee")' /></span><div><h2>Khoản thu của hộ</h2><p>Chủ hộ tra cứu và xem biên nhận.</p></div><span aria-hidden="true">↗</span></a>
+    <a href="/hoi-nhom" class="service-card"><span class="service-icon"><partial name="_PortalIcon" model='@("groups")' /></span><div><h2>Hội nhóm, đoàn thể</h2><p>Kết nối các tổ chức tại địa bàn.</p></div><span aria-hidden="true">↗</span></a>
 </section>
 <section id="announcements" class="announcement-section">
-    <div class="section-heading"><div><p class="eyebrow">THÔNG TIN TỪ TỔ DÂN PHỐ</p><h2>Thông báo cộng đồng</h2></div><span class="muted">@Model.Total thông báo</span></div>
+    <div class="section-heading"><div><p class="eyebrow">CẬP NHẬT TỪ @locality.Name</p><h2>Thông báo cộng đồng</h2></div><span class="section-count">@Model.Total thông báo</span></div>
     <form method="get" action="/" class="portal-filter">
         <label>Tìm thông báo<input name="search" value="@Model.Search" placeholder="Nhập tiêu đề hoặc nội dung…" maxlength="200"></label>
-        <label>Tổ dân phố<select name="groupId"><option value="">Tất cả tổ dân phố</option>@foreach (var group in Model.Groups) { <option value="@group.Id" selected="@(Model.GroupId == group.Id)">@group.Name</option> }</select></label>
         <button type="submit" class="primary">Tìm kiếm</button><a href="/#announcements">Đặt lại</a>
     </form>
-    @if (Model.Announcements.Count == 0) { <div class="empty-state"><h3>Chưa có thông báo phù hợp</h3><p>Thử thay đổi từ khóa hoặc tổ dân phố để tìm thêm thông tin.</p></div> }
+    @if (Model.Announcements.Count == 0) { <div class="empty-state"><h3>Chưa có thông báo phù hợp</h3><p>Chưa có thông báo công khai còn hiệu lực khớp từ khóa tại @locality.Name.</p></div> }
     <div class="announcement-grid">
     @foreach (var item in Model.Announcements)
     {
         <article class="announcement-card"><div class="card-meta"><span class="badge">@item.ResidentialGroup.Name</span><time>@item.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy")</time></div><h3><a href="/thong-bao/@item.Id">@item.Title</a></h3><p>@(item.Body.Length > 170 ? item.Body[..170] + "…" : item.Body)</p><a href="/thong-bao/@item.Id" class="read-more" aria-label="Đọc thông báo: @item.Title">Đọc thông báo <span aria-hidden="true">→</span></a></article>
     }
     </div>
-    @if (Model.Total > 9) { <nav class="pagination" aria-label="Phân trang thông báo">@if (Model.Page > 1) { <a asp-action="Index" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-groupId="@Model.GroupId">← Trang trước</a> }<span>Trang @Model.Page / @((int)Math.Ceiling(Model.Total / 9d))</span>@if (Model.Page * 9 < Model.Total) { <a asp-action="Index" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-groupId="@Model.GroupId">Trang sau →</a> }</nav> }
+    @if (Model.Total > 9) { <nav class="pagination" aria-label="Phân trang thông báo">@if (Model.Page > 1) { <a asp-action="Index" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search">← Trang trước</a> }<span>Trang @Model.Page / @((int)Math.Ceiling(Model.Total / 9d))</span>@if (Model.Page * 9 < Model.Total) { <a asp-action="Index" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search">Trang sau →</a> }</nav> }
 </section>
-<section class="join-banner"><div><h2>Thông tin của bạn, trong tầm tay.</h2><p>Đăng ký tài khoản để sử dụng dịch vụ cư dân sau khi được xác minh.</p></div><a class="button primary" href="/Account/Register">Đăng ký tài khoản →</a></section>
+<section class="community-organizations"><div class="section-heading"><div><p class="eyebrow">CƠ CẤU CỘNG ĐỒNG</p><h2>Tổ chức, ban ngành & hội nhóm</h2></div><a class="read-more" href="/co-cau-to-chuc">Xem tất cả <partial name="_PortalIcon" model='@("arrow")' /></a></div>@{ ViewData["OrganizationLimit"] = 3; }<partial name="_OrganizationCards" model="Model.Organizations" /></section>
+<section class="join-banner"><span class="join-icon"><partial name="_PortalIcon" model='@("profile")' /></span><div><h2>Bắt đầu với tài khoản cư dân</h2><p>Đăng ký thông tin để được xác minh và sử dụng các dịch vụ của địa bàn.</p></div><a class="button primary" href="/Account/Register">Đăng ký tài khoản <partial name="_PortalIcon" model='@("arrow")' /></a></section>

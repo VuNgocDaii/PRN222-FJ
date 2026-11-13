@@ -3,11 +3,10 @@ namespace QuanLyCuDan.Models;
 public sealed class PublicHomeViewModel
 {
     public List<Announcement> Announcements { get; set; } = [];
-    public List<ResidentialUnit> Groups { get; set; } = [];
     public string? Search { get; set; }
-    public long? GroupId { get; set; }
     public int Page { get; set; } = 1;
     public int Total { get; set; }
+    public OrganizationDirectoryViewModel Organizations { get; set; } = new();
 }
 public sealed class ResidentPortalViewModel
 {
@@ -19,7 +18,9 @@ public sealed class ResidentPortalViewModel
     public List<Announcement> Announcements { get; set; } = [];
     public List<Payment> Payments { get; set; } = [];
     public List<Activity> Notifications { get; set; } = [];
-    public List<ResidentialUnit> Groups { get; set; } = [];
+    public bool IsOnboarding { get; set; }
+    public OrganizationDirectoryViewModel Organizations { get; set; } = new();
+    public MyOrganizationsViewModel MyOrganizations { get; set; } = new();
     public ResidentRequestInput Input { get; set; } = new();
     public int Page { get; set; } = 1;
     public int Total { get; set; }
@@ -32,7 +33,6 @@ public sealed class ResidentRequestInput
     [Required, StringLength(4000, MinimumLength = 5)] public string Body { get; set; } = "";
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
-    public long? GroupId { get; set; }
     [StringLength(30)] public string? TargetHouseholdCode { get; set; }
     public long? NewHeadResidentId { get; set; }
     [Required, RegularExpression("^[a-fA-F0-9]{32}$")] public string ClientKey { get; set; } = Guid.NewGuid().ToString("N");
@@ -68,7 +68,7 @@ public static class PortalLabels
         "MALE" => "Nam", "FEMALE" => "Nữ", "PUBLIC" => "Công khai", "RESIDENTS" => "Dành cho cư dân",
         "REQUIRED" => "Bắt buộc", "VOLUNTARY" => "Tự nguyện", "CASH" => "Tiền mặt", "TRANSFER" => "Chuyển khoản",
         "SUBMITTED" => "Đã gửi", "RESIDENT_CANCELLED" => "Cư dân hủy yêu cầu", "RESIDENT_MESSAGE" => "Trao đổi của cư dân",
-        "FEEDBACK_REPLIED" => "Phản ánh của bạn đã được trả lời", "ANNOUNCEMENT_PUBLISHED" => "Tổ dân phố có thông báo mới",
+        "FEEDBACK_REPLIED" => "Phản ánh của bạn đã được trả lời", "ANNOUNCEMENT_PUBLISHED" => "Địa bàn có thông báo mới",
         "PAYMENT_RECORDED" => "Khoản đóng tiền của hộ đã được ghi nhận", "REQUEST_APPROVED" => "Yêu cầu đã được duyệt",
         "REQUEST_REJECTED" => "Yêu cầu đã bị từ chối", "ATTACHMENT_UPLOADED" => "Đã bổ sung giấy tờ",
         _ => value

@@ -46,10 +46,11 @@ const pause = ms => new Promise(resolve=>setTimeout(resolve,ms));
     } else {
     await viewport(390,844);await navigate(base+'/');await noOverflow();await capture('portal-mobile.png');
     await navigate(base+'/Account/Register');await noOverflow();
-    assert.equal(await evaluate('!!document.querySelector("[name=DateOfBirth]") && !!document.querySelector("[name=Address]") && document.querySelector("[name=GroupId]").options.length > 1'), true);
+    assert.equal(await evaluate('!!document.querySelector("[name=DateOfBirth]") && !!document.querySelector("[name=Address]") && !document.querySelector("[name=GroupId]")'), true);
     await capture('registration-mobile.png');
     await navigate(base+'/Account/Login');
-    await evaluate(`document.querySelector('[name="UserName"]').value=${JSON.stringify(process.env.PORTAL_TEST_USER||'dan03')};document.querySelector('[name="Password"]').value=${JSON.stringify(process.env.PORTAL_TEST_PASSWORD||'12345678')};document.querySelector('form').requestSubmit();`);
+    if (!process.env.PORTAL_TEST_USER) throw new Error('Set PORTAL_TEST_USER to a verified resident of the configured portal locality.');
+    await evaluate(`document.querySelector('[name="UserName"]').value=${JSON.stringify(process.env.PORTAL_TEST_USER)};document.querySelector('[name="Password"]').value=${JSON.stringify(process.env.PORTAL_TEST_PASSWORD||'12345678')};document.querySelector('form').requestSubmit();`);
     for(let attempt=0;attempt<60;attempt++){await pause(100);if(await evaluate('location.pathname === "/Resident" && document.readyState === "complete"'))break;if(attempt===59)throw new Error('Resident login/navigation failed');}
     await noOverflow();await capture('resident-mobile.png');
     await navigate(base+'/Resident/requests');await noOverflow();

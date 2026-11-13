@@ -1,0 +1,10 @@
+@model OrganizationDirectoryViewModel
+@{ Layout = "_PortalLayout"; ViewData["Title"] = Model.Title; var locality = (QuanLyCuDan.Portal.PortalLocality)ViewData["PortalLocality"]!; var groupsOnly = ViewContext.RouteData.Values["action"]?.ToString() == "Groups"; }
+<nav class="breadcrumb" aria-label="Đường dẫn"><a href="/">Trang chủ</a><span>/</span><span>@Model.Title</span></nav>
+<header class="directory-heading"><div><p class="eyebrow">@locality.Name · CỘNG ĐỒNG</p><h1>@Model.Title</h1><p class="muted">Thông tin về các tổ chức, ban ngành và đoàn thể tại địa bàn phục vụ.</p></div><span class="heading-icon"><partial name="_PortalIcon" model='@("organization")' /></span></header>
+@if (!groupsOnly)
+{
+    <nav class="category-tabs" aria-label="Lĩnh vực tổ chức"><a class="@(Model.Kind == null ? "active" : "")" href="/co-cau-to-chuc">Tất cả lĩnh vực</a>@foreach (var kind in OrganizationKinds.Labels) { <a class="@(Model.Kind == kind.Key ? "active" : "")" href="/co-cau-to-chuc?kind=@kind.Key">@kind.Value</a> }</nav>
+}
+<partial name="_OrganizationCards" model="Model" />
+<aside class="information-note"><partial name="_PortalIcon" model='@("document")' /><p>Danh mục và định mức được ghi nhận theo tài liệu cơ cấu. Thông tin nhân sự chỉ hiển thị khi đã được xác nhận và cho phép công khai.</p></aside>

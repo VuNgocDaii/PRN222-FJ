@@ -1,21 +1,25 @@
 ﻿@model ResidentPortalViewModel
 @{
     Layout = "_PortalLayout";
-    var names = new Dictionary<string, string> { ["overview"] = "Tổng quan", ["profile"] = "Hồ sơ cá nhân", ["household"] = "Hộ gia đình", ["requests"] = "Yêu cầu cư trú", ["feedback"] = "Phản ánh & góp ý", ["fees"] = "Khoản thu của hộ", ["announcements"] = "Thông báo tổ dân phố", ["notifications"] = "Thông báo cá nhân" };
-    var permissions = new Dictionary<string, string> { ["overview"] = "profile.self.read", ["profile"] = "profile.self.read", ["household"] = "households.self.read", ["requests"] = "residence_requests.self.read", ["feedback"] = "feedback.self.read", ["fees"] = "fees.self.read", ["announcements"] = "announcements.audience.read", ["notifications"] = "notifications.self.read" };
+    var names = new Dictionary<string, string> { ["overview"] = "Tổng quan", ["profile"] = "Hồ sơ cá nhân", ["household"] = "Hộ gia đình", ["requests"] = "Yêu cầu cư trú", ["feedback"] = "Phản ánh & góp ý", ["documents"] = "Giấy tờ đính kèm", ["fees"] = "Khoản thu của hộ", ["announcements"] = "Thông báo cư dân", ["notifications"] = "Thông báo cá nhân", ["groups"] = "Hội nhóm, đoàn thể", ["my-groups"] = "Hội nhóm của tôi" };
+    var permissions = new Dictionary<string, string> { ["overview"] = "profile.self.read", ["profile"] = "profile.self.read", ["household"] = "households.self.read", ["requests"] = "residence_requests.self.read", ["feedback"] = "feedback.self.read", ["documents"] = "attachments.self.read", ["fees"] = "fees.self.read", ["announcements"] = "announcements.audience.read", ["notifications"] = "notifications.self.read", ["groups"] = "profile.self.read", ["my-groups"] = "profile.self.read" };
+    var icons = new Dictionary<string, string> { ["overview"] = "home", ["profile"] = "profile", ["household"] = "household", ["requests"] = "request", ["feedback"] = "feedback", ["documents"] = "document", ["fees"] = "fee", ["announcements"] = "notice", ["notifications"] = "bell", ["groups"] = "groups", ["my-groups"] = "organization" };
     ViewData["Title"] = names[Model.Section];
     var resident = Model.Account.Resident!;
     var household = resident.Household;
+    var locality = (QuanLyCuDan.Portal.PortalLocality)ViewData["PortalLocality"]!;
+    var visible = names.Where(i => Model.Access.Contains(permissions[i.Key]) && (!Model.IsOnboarding || i.Key is not ("groups" or "my-groups"))).ToList();
 }
-<header class="resident-heading"><div><p class="eyebrow">CỔNG DỊCH VỤ CƯ DÂN</p><h1>@names[Model.Section]</h1><p class="muted">Xin chào, @Model.Account.FullName</p></div><span class="badge">@(household?.ResidentialGroup.Name ?? "Chưa có hộ hiện tại")</span></header>
+<header class="resident-heading"><div><p class="eyebrow">CỔNG DỊCH VỤ CƯ DÂN · @locality.Name</p><h1>@names[Model.Section]</h1><p class="muted">Xin chào, @Model.Account.FullName</p></div><span class="badge">@(Model.IsOnboarding ? "Chưa được xác nhận vào hộ" : locality.Name)</span></header>
+@if (Model.IsOnboarding) { <p class="message" role="status">Bạn chưa có hộ tại @locality.Name. Hồ sơ đã xác minh chỉ cho phép xem/cập nhật thông tin cá nhân và gửi, theo dõi yêu cầu chuyển đến hoặc đăng ký vào hộ. Quyền truy cập dữ liệu cư dân phụ thuộc kết quả xử lý của ban quản lý.</p> }
 <div class="resident-shell">
-<aside class="resident-nav"><p class="eyebrow">KHÔNG GIAN CỦA BẠN</p><nav aria-label="Chức năng cư dân">@foreach (var item in names) { @if (Model.Access.Contains(permissions[item.Key])) { <a href="/Resident/@item.Key" class="@(Model.Section == item.Key ? "active" : "")" aria-current="@(Model.Section == item.Key ? "page" : null)">@item.Value <span aria-hidden="true">›</span></a> } }</nav><div class="nav-note">Thông tin sai hoặc chưa đầy đủ?<br>Liên hệ ban quản lý để được hỗ trợ điều chỉnh hồ sơ.</div><a href="/Account/Profile" class="read-more">Đổi mật khẩu →</a></aside>
+<aside class="resident-nav"><div class="resident-nav-profile"><span class="resident-avatar"><partial name="_PortalIcon" model='@("profile")' /></span><div><strong>@Model.Account.FullName</strong><span>@(Model.IsOnboarding ? "Hồ sơ chờ vào hộ" : locality.Name)</span></div></div><p class="eyebrow">DỊCH VỤ CỦA BẠN</p><nav aria-label="Chức năng cư dân">@foreach (var item in visible) { <a href="/Resident/@item.Key" class="@(Model.Section == item.Key ? "active" : "")" aria-current="@(Model.Section == item.Key ? "page" : null)"><partial name="_PortalIcon" model="@icons[item.Key]" /><span>@item.Value</span><span aria-hidden="true">›</span></a> }</nav><div class="nav-note">Cần điều chỉnh hồ sơ?<br>Liên hệ ban quản lý để được xác minh thông tin.</div><a href="/Account/Profile" class="read-more">Đổi mật khẩu →</a></aside>
 <div class="resident-content">
 <div asp-validation-summary="All" class="validation message" role="alert"></div>
 @if (Model.Section == "overview")
 {
-    <section class="welcome-panel"><p class="eyebrow">CÙNG NHAU XÂY DỰNG CỘNG ĐỒNG</p><h2>Chào mừng bạn trở về.</h2><p>Mọi thông tin và dịch vụ cư dân được kết nối tại đây. Chọn một chức năng để bắt đầu.</p><a class="button primary" href="/Resident/requests">Gửi yêu cầu cư trú →</a></section>
-    <div class="info-grid"><section class="panel"><h2>Thông tin cư trú</h2><dl><dt>Họ và tên</dt><dd>@resident.FullName</dd><dt>Trạng thái</dt><dd><span class="badge">@PortalLabels.Text(resident.ResidenceStatus)</span></dd><dt>Hộ hiện tại</dt><dd>@(household?.Code ?? "Chưa có")</dd><dt>Địa chỉ</dt><dd>@(household?.Address ?? "Chưa có")</dd></dl></section><section class="panel"><h2>Bạn cần thực hiện gì?</h2><div class="quick-links">@foreach (var item in names.Where(i => i.Key != "overview" && Model.Access.Contains(permissions[i.Key])) ) { <a href="/Resident/@item.Key">@item.Value <span aria-hidden="true">→</span></a> }</div></section></div>
+    <section class="welcome-panel"><div><p class="eyebrow">KHÔNG GIAN CƯ DÂN</p><h2>Xin chào, @Model.Account.FullName</h2><p>Thông tin, hồ sơ và những kết nối của bạn tại @locality.Name.</p>@if (Model.Access.Contains("residence_requests.self.create")) { <a class="button primary" href="/Resident/requests">Gửi yêu cầu cư trú <partial name="_PortalIcon" model='@("arrow")' /></a> }</div><span class="welcome-symbol"><partial name="_PortalIcon" model='@("household")' /></span></section>
+    <div class="info-grid"><section class="panel"><div class="panel-title"><partial name="_PortalIcon" model='@("profile")' /><h2>Thông tin cư trú</h2></div><dl><dt>Họ và tên</dt><dd>@resident.FullName</dd><dt>Trạng thái</dt><dd><span class="badge">@PortalLabels.Text(resident.ResidenceStatus)</span></dd><dt>Hộ hiện tại</dt><dd>@(household?.Code ?? "Chưa có")</dd><dt>Địa chỉ</dt><dd>@(household?.Address ?? "Chưa có")</dd></dl></section><section class="panel"><div class="panel-title"><partial name="_PortalIcon" model='@("request")' /><h2>Truy cập nhanh</h2></div><div class="quick-links">@foreach (var item in visible.Where(i => i.Key != "overview")) { <a href="/Resident/@item.Key"><span><partial name="_PortalIcon" model="@icons[item.Key]" /> @item.Value</span><span aria-hidden="true">→</span></a> }</div></section></div>
 }
 @if (Model.Section == "profile")
 {
@@ -27,7 +31,7 @@
 }
 @if (Model.Section == "household")
 {
-    <section class="panel"><h2>Hộ gia đình @household?.Code</h2><dl><dt>Địa chỉ</dt><dd>@household?.Address</dd><dt>Tổ dân phố</dt><dd>@household?.ResidentialGroup.Name</dd><dt>Ngày đăng ký</dt><dd>@household?.RegisteredAt.ToString("dd/MM/yyyy")</dd></dl></section>
+    <section class="panel"><h2>Hộ gia đình @household?.Code</h2><dl><dt>Địa chỉ</dt><dd>@household?.Address</dd><dt>@locality.TypeLabel</dt><dd>@locality.Name</dd><dt>Ngày đăng ký</dt><dd>@household?.RegisteredAt.ToString("dd/MM/yyyy")</dd></dl></section>
     <section class="panel"><h2>Thành viên hiện tại <span class="badge">@Model.Members.Count</span></h2><div class="table-scroll"><table><thead><tr><th>Họ và tên</th><th>Ngày sinh</th><th>Quan hệ với chủ hộ</th><th>Cư trú</th></tr></thead><tbody>@foreach (var member in Model.Members) { <tr><td>@member.FullName @if (member.Id == household?.HeadResidentId) { <span class="badge">Chủ hộ</span> }</td><td>@member.DateOfBirth.ToString("dd/MM/yyyy")</td><td>@member.RelationshipToHead</td><td>@PortalLabels.Text(member.ResidenceStatus)</td></tr> }</tbody></table></div></section>
 }
 @if (Model.Section is "requests" or "feedback")
@@ -35,18 +39,17 @@
     var feedback = Model.Section == "feedback";
     @if (Model.Access.Contains(feedback ? "feedback.self.create" : "residence_requests.self.create"))
     {
-        <section class="panel"><h2>@(feedback ? "Gửi phản ánh mới" : "Gửi yêu cầu cư trú")</h2><p class="muted small">@(feedback ? "Nội dung được gửi riêng đến cán bộ phụ trách tổ dân phố." : "Yêu cầu áp dụng cho hồ sơ cư dân của bạn và cần ban quản lý phê duyệt.")</p>
+        <section class="panel"><h2>@(feedback ? "Gửi phản ánh mới" : "Gửi yêu cầu cư trú")</h2><p class="muted small">Nơi tiếp nhận: <strong>@locality.Name</strong>. @(feedback ? "Nội dung được gửi riêng đến cán bộ phụ trách." : "Yêu cầu áp dụng cho hồ sơ cư dân của bạn và cần ban quản lý phê duyệt.")</p>
         <form action="/Resident/requests" method="post" asp-antiforgery="true" id="resident-request-form">
             <input asp-for="Input.Kind" type="hidden"><input asp-for="Input.ClientKey" type="hidden">
-            <div class="info-grid"><label>@(feedback ? "Lĩnh vực phản ánh" : "Loại yêu cầu")<select asp-for="Input.Type" id="request-type">@foreach (var type in feedback ? new[] { "ENVIRONMENT", "INFRASTRUCTURE", "OTHER" } : new[] { "TEMPORARY_ABSENCE", "TEMPORARY_RESIDENCE", "MOVE_IN", "MOVE_OUT", "ADD_MEMBER", "CHANGE_HEAD" }) { <option value="@type">@PortalLabels.Text(type)</option> }</select></label>
-            @if (household == null) { <label>Tổ dân phố tiếp nhận<select asp-for="Input.GroupId" required><option value="">Chọn tổ dân phố</option>@foreach (var group in Model.Groups) { <option value="@group.Id">@group.Name</option> }</select></label> }
+            <div class="info-grid"><label>@(feedback ? "Lĩnh vực phản ánh" : "Loại yêu cầu")<select asp-for="Input.Type" id="request-type">@foreach (var type in feedback ? new[] { "ENVIRONMENT", "INFRASTRUCTURE", "OTHER" } : Model.IsOnboarding ? new[] { "MOVE_IN", "ADD_MEMBER" } : new[] { "TEMPORARY_ABSENCE", "TEMPORARY_RESIDENCE", "MOVE_IN", "MOVE_OUT", "ADD_MEMBER", "CHANGE_HEAD" }) { <option value="@type">@PortalLabels.Text(type)</option> }</select></label>
             </div>
             <label>Tiêu đề<input asp-for="Input.Subject" required minlength="3" maxlength="250" placeholder="Tóm tắt nội dung cần giải quyết"></label>
             <label>Nội dung<textarea asp-for="Input.Body" required minlength="5" maxlength="4000" rows="5" placeholder="Mô tả cụ thể để cán bộ có thể hỗ trợ bạn"></textarea></label>
             @if (!feedback)
             {
                 <div class="info-grid"><label>Ngày bắt đầu<input asp-for="Input.StartDate" type="date" required></label><label>Ngày kết thúc (nếu có)<input asp-for="Input.EndDate" type="date"></label></div>
-                <label data-request-field="target">Mã hộ tiếp nhận (chuyển đến / đăng ký vào hộ)<input asp-for="Input.TargetHouseholdCode" maxlength="30" placeholder="Mã hộ do ban quản lý cung cấp"><span class="muted small">Đăng ký vào hộ áp dụng cho chính bạn; hộ tiếp nhận phải thuộc tổ đang tiếp nhận yêu cầu.</span></label>
+                <label data-request-field="target">Mã hộ tiếp nhận (chuyển đến / đăng ký vào hộ)<input asp-for="Input.TargetHouseholdCode" maxlength="30" placeholder="Mã hộ do ban quản lý cung cấp"><span class="muted small">Đăng ký vào hộ áp dụng cho chính bạn; hộ tiếp nhận phải thuộc @locality.Name.</span></label>
                 <label data-request-field="head">Chủ hộ mới (khi thay đổi chủ hộ)<select asp-for="Input.NewHeadResidentId"><option value="">Chọn thành viên trong hộ</option>@foreach (var member in Model.Members.Where(r => r.Id != resident.Id)) { <option value="@member.Id">@member.FullName</option> }</select><span class="muted small">Chỉ chủ hộ hiện tại được đề nghị thay chủ hộ.</span></label>
             }
             <button class="primary" type="submit">@(feedback ? "Gửi phản ánh" : "Gửi yêu cầu") <span aria-hidden="true">↗</span></button>
@@ -74,13 +77,31 @@
 }
 @if (Model.Section == "announcements")
 {
-    @if (Model.Announcements.Count == 0) { <div class="empty-state"><h2>Chưa có thông báo còn hiệu lực</h2><p>Thông báo mới từ tổ dân phố sẽ xuất hiện tại đây.</p></div> }
+    @if (Model.Announcements.Count == 0) { <div class="empty-state"><h2>Chưa có thông báo còn hiệu lực</h2><p>Thông báo mới từ @locality.Name sẽ xuất hiện tại đây.</p></div> }
     @foreach (var announcement in Model.Announcements) { <article class="panel"><div class="card-meta"><span class="badge">@PortalLabels.Text(announcement.Audience)</span><time>@announcement.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm")</time></div><h2><a href="/Resident/announcement/@announcement.Id">@announcement.Title</a></h2><div class="prose">@announcement.Body</div></article> }
 }
 @if (Model.Section == "notifications")
 {
     @if (Model.Notifications.Count == 0) { <div class="empty-state"><h2>Bạn chưa có thông báo cá nhân</h2><p>Các cập nhật dành riêng cho bạn sẽ xuất hiện tại đây.</p></div> }
     @foreach (var item in Model.Notifications) { <article class="panel notification @(item.ReadAt == null ? "unread" : "")"><div><span class="badge">@(item.ReadAt == null ? "Chưa đọc" : "Đã đọc")</span><h2>@PortalLabels.Text(item.EventCode)</h2><time class="muted small">@item.OccurredAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</time>@if (item.TargetType == "REQUEST" || item.TargetType == "Request") { <p><a href="/Resident/request/@item.TargetId">Xem hồ sơ →</a></p> }@if (item.TargetType == "Announcement") { <p><a href="/Resident/announcement/@item.TargetId">Xem thông báo →</a></p> }</div>@if (item.ReadAt == null && Model.Access.Contains("notifications.self.mark_read")) { <form action="/Resident/notifications/@item.Id/read" method="post" asp-antiforgery="true"><button class="secondary" type="submit">Đánh dấu đã đọc</button></form> }</article> }
+}
+@if (Model.Section == "documents")
+{
+    <section class="panel"><div class="section-heading"><div><p class="eyebrow">HỒ SƠ CỦA BẠN</p><h2>Giấy tờ đính kèm</h2></div><span class="badge">@Model.Total tệp</span></div><p class="muted">Giấy tờ đã bổ sung trong yêu cầu hoặc phản ánh của chính bạn. Mở hồ sơ để xem tiến độ và trao đổi.</p>
+    @if (Model.Requests.Count == 0) { <div class="empty-state"><h3>Chưa có giấy tờ đính kèm</h3><p>Bạn có thể bổ sung một tệp PDF, JPEG hoặc PNG tối đa 5 MB tại hồ sơ còn chờ tiếp nhận.</p></div> }
+    @foreach (var request in Model.Requests) { <article class="document-row"><span class="service-icon"><partial name="_PortalIcon" model='@("document")' /></span><div><h3>@request.AttachmentFileName</h3><a href="/Resident/request/@request.Id">@request.Code · @request.Subject</a></div><a class="button secondary" href="/Resident/request/@request.Id/attachment">Tải giấy tờ</a></article> }
+    </section>
+}
+@if (Model.Section == "groups")
+{
+    <section><div class="section-heading"><div><p class="eyebrow">KẾT NỐI CỘNG ĐỒNG</p><h2>Tổ chức, hội nhóm & đoàn thể</h2></div><a class="read-more" href="/Resident/my-groups">Hội nhóm của tôi →</a></div>@{ ViewData["OrganizationsResident"] = true; }<partial name="_OrganizationCards" model="Model.Organizations" /></section>
+}
+@if (Model.Section == "my-groups")
+{
+    <section class="panel"><div class="section-heading"><div><p class="eyebrow">THAM GIA CỘNG ĐỒNG</p><h2>Hội nhóm của tôi</h2></div></div><p class="muted">Những hội nhóm và chức danh đã được xác nhận cho hồ sơ cư dân của bạn.</p>
+    @if (Model.MyOrganizations.Items.Count == 0) { <div class="empty-state"><span class="empty-icon"><partial name="_PortalIcon" model='@("groups")' /></span><h3>Chưa cập nhật thông tin tham gia</h3><p>Hội nhóm của bạn sẽ xuất hiện khi có dữ liệu thành viên hoặc phân công đã được xác nhận.</p></div> }
+    @foreach (var item in Model.MyOrganizations.Items) { <article class="membership-card"><span class="organization-icon"><partial name="_PortalIcon" model='@("groups")' /></span><div><span class="category-tag">@OrganizationKinds.Text(item.Kind)</span><h3><a href="/Resident/organization/@item.OrganizationId">@item.Name</a></h3>@if (item.MembershipRole != null) { <p>Vai trò tham gia: @item.MembershipRole</p> }@foreach (var position in item.Positions) { <span class="badge">@position</span> }</div></article> }
+    </section>
 }
 @if (Model.Total > 10) { <nav class="pagination" aria-label="Phân trang">@if (Model.Page > 1) { <a href="/Resident/@Model.Section?page=@(Model.Page - 1)">← Trang trước</a> }<span>Trang @Model.Page / @((int)Math.Ceiling(Model.Total / 10d))</span>@if (Model.Page * 10 < Model.Total) { <a href="/Resident/@Model.Section?page=@(Model.Page + 1)">Trang sau →</a> }</nav> }
 </div></div>

@@ -1,4 +1,10 @@
 ﻿(() => {
+    const menuToggle = document.querySelector('.mobile-menu-toggle');
+    if (menuToggle) menuToggle.addEventListener('click', () => {
+        const expanded = menuToggle.getAttribute('aria-expanded') !== 'true';
+        menuToggle.setAttribute('aria-expanded', String(expanded));
+        document.getElementById('portal-main-menu')?.classList.toggle('is-open', expanded);
+    });
     const form = document.getElementById('resident-request-form');
     const type = document.getElementById('request-type');
     if (form && type) {

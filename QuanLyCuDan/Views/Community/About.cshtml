@@ -1,0 +1,7 @@
+@model OrganizationDirectoryViewModel
+@{ Layout = "_PortalLayout"; ViewData["Title"] = "Giới thiệu địa bàn"; var locality = (QuanLyCuDan.Portal.PortalLocality)ViewData["PortalLocality"]!; }
+<nav class="breadcrumb" aria-label="Đường dẫn"><a href="/">Trang chủ</a><span>/</span><span>Giới thiệu địa bàn</span></nav>
+<header class="directory-heading"><div><p class="eyebrow">ĐỊA BÀN PHỤC VỤ</p><h1>@locality.Name</h1><p class="muted">Cổng thông tin cộng đồng và các dịch vụ dành cho cư dân.</p></div><span class="heading-icon"><partial name="_PortalIcon" model='@("household")' /></span></header>
+<section class="panel locality-about"><h2>Thông tin địa bàn</h2><dl><dt>Tên địa bàn</dt><dd>@locality.Name</dd><dt>Mã địa bàn</dt><dd>@locality.Code</dd><dt>Loại địa bàn</dt><dd>@locality.TypeLabel</dd>@if (ViewData["LocalityAddress"] is string address && !string.IsNullOrWhiteSpace(address)) { <dt>Địa chỉ</dt><dd>@address</dd> }</dl></section>
+<div class="section-heading"><div><p class="eyebrow">KẾT NỐI CỘNG ĐỒNG</p><h2>Cơ cấu tổ chức, ban ngành & hội nhóm</h2></div><a class="read-more" href="/co-cau-to-chuc">Xem tất cả →</a></div>
+<partial name="_OrganizationCards" model="Model" />

@@ -1,11 +1,11 @@
 @model QuanLyCuDan.Auth.RegistrationProfileInput
-@{ var groups = ViewData["RegistrationGroups"] as List<ResidentialUnit> ?? new(); }
+@{ var locality = (QuanLyCuDan.Portal.PortalLocality)ViewData["PortalLocality"]!; }
+<p class="muted">Địa bàn đăng ký: <strong>@locality.Name</strong> · @locality.TypeLabel</p>
 <div class="registration-fields">
     <label>Ngày sinh<input asp-for="DateOfBirth" type="date" required min="1900-01-01" max="@DateTime.UtcNow.AddHours(7).ToString("yyyy-MM-dd")"></label>
     <label>Giới tính<select asp-for="Gender" required><option value="">Chọn giới tính</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option></select></label>
     <label>CCCD (nếu có)<input asp-for="CitizenId" inputmode="numeric" pattern="[0-9]{12}" maxlength="12"></label>
     <label>Nghề nghiệp (nếu có)<input asp-for="Occupation" maxlength="150"></label>
-    <label>Tổ dân phố<select asp-for="GroupId" required><option value="">Chọn tổ dân phố</option>@foreach (var group in groups) { <option value="@group.Id">@group.Name</option> }</select></label>
     <label>Hình thức cư trú<select asp-for="ResidenceStatus"><option value="RESIDING">Thường trú</option><option value="TEMPORARY">Tạm trú</option></select></label>
 </div>
 <label>Địa chỉ cư trú<input asp-for="Address" autocomplete="street-address" required maxlength="300" placeholder="Số nhà, đường…"></label>

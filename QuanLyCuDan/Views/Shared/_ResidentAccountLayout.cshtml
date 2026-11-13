@@ -1,0 +1,9 @@
+@{ var locality = ViewData["PortalLocality"] as QuanLyCuDan.Portal.PortalLocality; }
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><link rel="stylesheet" href="~/css/design-tokens.css" asp-append-version="true"><meta name="viewport" content="width=device-width,initial-scale=1"><title>@ViewData["Title"] · Cổng thông tin cư dân</title><link rel="stylesheet" href="~/css/community-portal.css" asp-append-version="true"></head>
+<body class="portal-body resident-account-page">
+<header class="account-portal-header"><a class="portal-brand" href="/"><span class="brand-mark">CĐ</span><span>Cổng thông tin cộng đồng<small>@(locality?.Name ?? "Dịch vụ dành cho cư dân")</small></span></a><a class="account-back" href="/">← Trang công khai</a></header>
+<main class="resident-account-shell"><aside class="account-introduction"><p class="eyebrow">KẾT NỐI CỘNG ĐỒNG</p><h2>Thông tin của bạn.<br>Dịch vụ trong tầm tay.</h2><p>Tra cứu thông tin, gửi yêu cầu và theo dõi kết quả tại cổng cư dân của địa bàn.</p><div class="account-benefit"><partial name="_PortalIcon" model='@("check")' /><span>Thông tin theo đúng tài khoản và hộ gia đình</span></div><div class="account-benefit"><partial name="_PortalIcon" model='@("check")' /><span>Hồ sơ cư dân được xác minh trước khi cấp quyền</span></div><a href="/Home/Privacy">Quyền riêng tư →</a></aside><section class="resident-account-card @(ViewData["WideAccount"] is true ? "wide-account" : "")">@RenderBody()</section></main>
+<footer class="account-portal-footer">Cổng thông tin cộng đồng · Hệ thống demo học tập</footer>
+@await RenderSectionAsync("Scripts", required: false)
+</body></html>
