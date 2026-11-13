@@ -46,6 +46,7 @@
 @foreach (var user in Model.Users)
 {
     var profile = QuanLyCuDan.Auth.RegistrationProfileInput.Read(user.RegistrationProfile);
+    var matched = Model.MatchResident(profile?.CitizenId);
     <dialog id="detail-@user.Id" class="password-dialog registration-dialog" aria-labelledby="detail-title-@user.Id">
         <div class="section-heading"><h2 id="detail-title-@user.Id">Chi tiết đăng ký</h2><button type="button" class="secondary" data-review-close>Đóng</button></div>
         <header class="section-heading">
@@ -70,33 +71,37 @@
         @if (user.VerificationStatus == "PENDING" || user.VerificationStatus == "APPROVED" && user.ResidentId == null)
         {
             <h2>@(user.VerificationStatus == "APPROVED" ? "Bổ sung liên kết hồ sơ cư dân" : "Xác minh và phê duyệt")</h2>
-            @if (user.VerificationStatus == "APPROVED")
-            {
-                <p class="message">Tài khoản đã được duyệt nhưng chưa có hồ sơ cư dân. Chọn đúng hồ sơ bên dưới để hoàn tất liên kết và tự cấp vai trò Cư dân, Tài khoản cơ bản với phạm vi Cá nhân.</p>
-            }
             <form method="post" class="review-form">
                 <input type="hidden" name="status" value="@Model.Status">
                 <input type="hidden" name="UserId" value="@user.Id">
                 <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(user.RowVersion)">
                 <input type="hidden" name="Approve" value="true">
-                <label>Tìm hồ sơ cư dân<input type="search" class="resident-search" placeholder="Họ tên hoặc số điện thoại"></label>
-                <label>Hồ sơ cư dân chưa liên kết tài khoản
-                    <select name="ResidentId" required>
-                        <option value="">Chọn hồ sơ để xác minh</option>
-                        @foreach (var resident in Model.Residents)
-                        {
-                            <option value="@resident.Id">@resident.FullName · @resident.DateOfBirth.ToString("dd/MM/yyyy") · @resident.PhoneNumber · Mã #@resident.Id</option>
-                        }
-                    </select>
-                </label>
-                @if (Model.Residents.Count == 0)
+                @if (matched != null)
                 {
-                    <p class="muted small">Chưa có hồ sơ cư dân có thể liên kết.</p>
+                    <input type="hidden" name="ResidentId" value="@matched.Id">
+                    <section class="registration-profile">
+                        <h3>Hồ sơ trùng CCCD</h3>
+                        <dl>
+                            <dt>Họ tên</dt><dd>@matched.FullName</dd>
+                            <dt>Ngày sinh</dt><dd>@matched.DateOfBirth.ToString("dd/MM/yyyy")</dd>
+                            <dt>Giới tính</dt><dd>@PortalLabels.Text(matched.Gender)</dd>
+                            <dt>CCCD</dt><dd>@matched.CitizenId</dd>
+                            <dt>Điện thoại</dt><dd>@matched.PhoneNumber</dd>
+                        </dl>
+                    </section>
+                    <label class="check"><input type="checkbox" name="Verified" value="true" required>Tôi đã đối chiếu và xác nhận đúng người đăng ký.</label>
+                    <p class="muted small">Khi duyệt, hệ thống liên kết hồ sơ và tự cấp quyền cư dân.</p>
                 }
-                <p class="muted small">Chọn hồ sơ đã có nếu đây là cùng một cư dân. Nếu chưa có hồ sơ, sử dụng mục tạo hồ sơ mới bên dưới khi đăng ký đã cung cấp đủ thông tin.</p>
-                <label class="check"><input type="checkbox" name="Verified" value="true" required>Tôi đã đối chiếu và xác nhận đúng hồ sơ cư dân.</label>
-                <p class="muted small">Sau khi duyệt, tài khoản được đăng nhập và sử dụng quyền cư dân.</p>
-                <div class="inline"><button type="submit" class="primary" disabled="@(Model.Residents.Count == 0)">@(user.VerificationStatus == "APPROVED" ? "Liên kết và cấp quyền cư dân" : "Phê duyệt và cấp quyền")</button>@if (user.VerificationStatus == "PENDING") { <button type="button" class="danger" data-review-reject>Từ chối đăng ký</button> }</div>
+                else
+                {
+                    <p class="message" role="status">@(string.IsNullOrWhiteSpace(profile?.CitizenId)
+                        ? "Đăng ký chưa cung cấp CCCD. Cần bổ sung CCCD trước khi duyệt."
+                        : "Không tìm thấy hồ sơ chưa liên kết trùng CCCD. Nhờ cán bộ kiểm tra hoặc tạo hồ sơ cư dân trước, rồi tải lại danh sách.")</p>
+                }
+                <div class="inline">
+                    <button type="submit" class="primary" disabled="@(matched == null)">@(user.VerificationStatus == "APPROVED" ? "Xác nhận liên kết" : "Duyệt đăng ký")</button>
+                    @if (user.VerificationStatus == "PENDING") { <button type="button" class="danger" data-review-reject>Từ chối</button> }
+                </div>
             </form>
             @if (user.VerificationStatus == "PENDING")
             {
@@ -107,23 +112,6 @@
                     <input type="hidden" name="Approve" value="false">
                     <button type="submit">Từ chối đăng ký</button>
                 </form>
-            }
-            @if (profile != null)
-            {
-                <details class="new-resident-section"><summary>Chưa có hồ sơ? Tạo hồ sơ từ thông tin đăng ký</summary>
-                    <form method="post" class="review-form">
-                        <input type="hidden" name="status" value="@Model.Status">
-                        <input type="hidden" name="UserId" value="@user.Id">
-                        <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(user.RowVersion)">
-                        <input type="hidden" name="Approve" value="true">
-                        <input type="hidden" name="CreateResident" value="true">
-                        <label>Hộ gia đình sau khi phê duyệt<select name="HouseholdId"><option value="">Tạo hộ mới theo địa chỉ đăng ký</option>@foreach (var h in Model.Households.Where(h => h.ResidentialGroupId == profile.GroupId)) { <option value="@h.Id">@h.Code · @h.Address</option> }</select></label>
-                        <label>Quan hệ với chủ hộ (khi vào hộ đã có)<input name="RelationshipToHead" maxlength="50" value="Thành viên"></label>
-                        <p class="muted small">Nếu tạo hộ mới, cư dân này là chủ hộ. Nếu chọn hộ đã có, hãy xác minh quan hệ với chủ hộ trước khi duyệt.</p>
-                        <label class="check"><input type="checkbox" name="Verified" value="true" required>Tôi đã đối chiếu thông tin, kiểm tra trùng hồ sơ và xác nhận hộ gia đình phù hợp.</label>
-                        <button type="submit" class="primary">Tạo hồ sơ, phê duyệt và cấp quyền cư dân</button>
-                    </form>
-                </details>
             }
         }
         else if (user.VerificationStatus == "REJECTED")
