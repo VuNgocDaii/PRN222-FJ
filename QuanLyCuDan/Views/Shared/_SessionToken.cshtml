@@ -1,0 +1,5 @@
+@{
+    var jwt = User.Identity?.IsAuthenticated == true ? Context.Request.Cookies["qlcd.auth"] : null;
+}
+<span id="session-token" data-token="@jwt" hidden></span>
+<script src="~/js/jwt-storage.js" asp-append-version="true" defer></script>

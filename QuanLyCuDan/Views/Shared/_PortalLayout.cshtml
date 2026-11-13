@@ -19,7 +19,7 @@
             {
                 <a href="/Resident" class="@(residentPage ? "selected" : "")">Cổng cư dân</a>
                 <a href="/Account/Profile">Tài khoản</a>
-                <form asp-controller="Account" asp-action="Logout" method="post" onsubmit="localStorage.removeItem('qlcd.accessToken')"><button class="secondary" type="submit">Đăng xuất</button></form>
+                <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary" type="submit">Đăng xuất</button></form>
             }
             else
             {
@@ -34,6 +34,7 @@
     </main>
     <footer class="portal-footer"><div class="portal-container"><strong>KDC · Cổng thông tin cư dân</strong><span>Thông tin minh bạch. Cộng đồng gắn kết.</span><a href="/Home/Privacy">Quyền riêng tư</a></div></footer>
     <script src="~/js/portal.js" asp-append-version="true" defer></script>
+    <partial name="_SessionToken" />
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

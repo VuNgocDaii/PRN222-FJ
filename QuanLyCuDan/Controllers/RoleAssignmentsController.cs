@@ -7,47 +7,25 @@ using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
 
 namespace QuanLyCuDan.Controllers;
-[ApiController, Route("api/users/{userId}/role-assignments")]
-[Authorize(AuthenticationSchemes = "Bearer")]
+[Authorize(AuthenticationSchemes = "Cookies")]
 public sealed class RoleAssignmentsController(MyStockContext context) : BaseController(context)
 {
     [HttpGet]
-    public async Task<IActionResult> List(string userId)
+    public async Task<IActionResult> Index(string? userId = null)
     {
-        return Ok(await AssignmentsCore(User, userId));
+        await RequirePermission(User, "roles.assign");
+        ViewData["Accounts"] = await db.AspNetUsers.AsNoTracking().OrderBy(u => u.UserName).ToListAsync();
+        ViewData["Roles"] = await db.AspNetRoles.AsNoTracking().Where(r => r.IsActive).OrderBy(r => r.Name).ToListAsync();
+        ViewData["Units"] = await db.ResidentialUnits.AsNoTracking().Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
+        ViewData["UserId"] = userId;
+        return View("Index", await db.UserRoleAssignments.AsNoTracking().Include(a => a.Role).Where(a => a.UserId == userId).OrderByDescending(a => a.AssignedAt).Take(200).ToListAsync());
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Assign(string userId, AssignmentInput input)
-    {
-        await AssignCore(User, userId, input);
-        return NoContent();
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Assign(string userId, AssignmentInput input) => SubmitForm(async () => { await AssignCore(User, userId, input); }, () => Index(userId), () => RedirectToAction(nameof(Index), new { userId }));
 
-    [HttpPost("{id:long}/revoke")]
-    public async Task<IActionResult> Revoke(string userId, long id, RevokeInput input)
-    {
-        await RevokeCore(User, userId, id, input);
-        return NoContent();
-    }
-
-    [HttpGet("/api/role-assignment-units")]
-    public async Task<IActionResult> Units()
-    {
-        return Ok(await UnitsCore(User));
-    }
-
-    private async Task<object> AssignmentsCore(ClaimsPrincipal actor, string id)
-    {
-        await RequirePermission(actor, "roles.assign");
-        return await db.UserRoleAssignments.AsNoTracking().Where(a => a.UserId == id).OrderByDescending(a => a.AssignedAt).Take(200).Select(a => new { a.Id, a.RoleId, roleName = a.Role.DisplayName, a.ScopeType, a.ResidentialAreaId, a.ResidentialGroupId, a.ValidFrom, a.ValidUntil, a.RevokedAt, a.RevocationReason, a.RowVersion }).ToListAsync();
-    }
-
-    private async Task<object> UnitsCore(ClaimsPrincipal actor)
-    {
-        await RequirePermission(actor, "roles.assign");
-        return await db.ResidentialUnits.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.UnitType, x.ParentUnitId }).ToListAsync();
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Revoke(string userId, long id, RevokeInput input) => SubmitForm(async () => { await RevokeCore(User, userId, id, input); }, () => Index(userId), () => RedirectToAction(nameof(Index), new { userId }));
 
     private async Task AssignCore(ClaimsPrincipal actor, string userId, AssignmentInput input)
     {

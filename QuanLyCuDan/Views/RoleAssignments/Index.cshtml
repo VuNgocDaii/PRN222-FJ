@@ -1,0 +1,13 @@
+@model List<UserRoleAssignment>
+@{ Layout = "_ManagementLayout"; ViewData["Title"] = "Gán vai trò"; var accounts = (List<AspNetUser>)ViewData["Accounts"]!; var roles = (List<AspNetRole>)ViewData["Roles"]!; var units = (List<ResidentialUnit>)ViewData["Units"]!; var selectedUser = ViewData["UserId"] as string; }
+<header class="page-header"><h1>Gán vai trò theo phạm vi</h1></header>
+<section class="panel"><form asp-action="Index" method="get"><label>Tài khoản<select name="userId" required><option value="">Chọn tài khoản</option>@foreach (var account in accounts) { <option value="@account.Id" selected="@(account.Id == selectedUser)">@account.UserName — @account.FullName</option> }</select></label><button class="primary">Xem vai trò</button></form></section>
+@if (!string.IsNullOrEmpty(selectedUser)) {
+<section class="panel"><h2>Gán vai trò mới</h2><form asp-action="Assign" method="post"><input name="userId" type="hidden" value="@selectedUser"><label>Vai trò<select name="RoleId" required>@foreach (var role in roles) { <option value="@role.Id">@role.Name — @role.DisplayName</option> }</select></label><label>Phạm vi<select name="ScopeType"><option>SYSTEM</option><option>SELF</option><option>AREA</option><option>GROUP</option></select></label><label>Địa bàn (chỉ AREA/GROUP)<select name="UnitId"><option value="">Không có</option>@foreach (var unit in units) { <option value="@unit.Id">@unit.UnitType — @unit.Name</option> }</select></label><label>Hiệu lực từ<input name="ValidFrom" type="datetime-local" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required></label><label>Hiệu lực đến<input name="ValidUntil" type="datetime-local"></label><button class="primary">Gán vai trò</button></form></section>
+@foreach (var assignment in Model) {
+<section class="panel"><h2>@assignment.Role.DisplayName</h2><p>@assignment.ScopeType · Địa bàn @(assignment.ResidentialAreaId ?? assignment.ResidentialGroupId) · @assignment.ValidFrom.ToLocalTime() → @assignment.ValidUntil?.ToLocalTime()</p>
+@if (assignment.RevokedAt == null) { <form asp-action="Revoke" asp-route-id="@assignment.Id" method="post"><input name="userId" type="hidden" value="@selectedUser"><input name="RowVersion" type="hidden" value="@Convert.ToBase64String(assignment.RowVersion)"><label>Lý do thu hồi<input name="Reason" required maxlength="1000"></label><button class="danger">Thu hồi vai trò</button></form> }
+else { <p>Đã thu hồi: @assignment.RevocationReason</p> }
+</section>
+}
+}

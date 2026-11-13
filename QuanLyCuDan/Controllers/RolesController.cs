@@ -7,47 +7,25 @@ using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
 
 namespace QuanLyCuDan.Controllers;
-[ApiController, Route("api/roles")]
-[Authorize(AuthenticationSchemes = "Bearer")]
+[Authorize(AuthenticationSchemes = "Cookies")]
 public sealed class RolesController(MyStockContext context) : BaseController(context)
 {
     [HttpGet]
-    public async Task<IActionResult> List()
+    public async Task<IActionResult> Index()
     {
-        return Ok(await RolesCore(User));
+        await RequirePermission(User, "roles.read");
+        ViewData["Catalog"] = await db.Permissions.AsNoTracking().Include(p => p.PermissionAllowedScopes).OrderBy(p => p.Code).ToListAsync();
+        return View("Index", await db.AspNetRoles.AsNoTracking().Include(r => r.Permissions).OrderBy(r => r.Name).ToListAsync());
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Create(RoleInput input)
-    {
-        return Ok(await CreateRoleCore(User, input));
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Create(RoleInput input) => SubmitForm(async () => { await CreateRoleCore(User, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, RoleEdit input)
-    {
-        await EditRoleCore(User, id, input);
-        return NoContent();
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Update(string id, RoleEdit input) => SubmitForm(async () => { await EditRoleCore(User, id, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
 
-    [HttpPut("{id}/permissions")]
-    public async Task<IActionResult> Permissions(string id, PermissionEdit input)
-    {
-        await SetPermissionsCore(User, id, input);
-        return NoContent();
-    }
-
-    [HttpGet("{id}/permissions")]
-    public async Task<IActionResult> GetPermissions(string id)
-    {
-        return Ok(await RolePermissionsCore(User, id));
-    }
-
-    private async Task<object> RolesCore(ClaimsPrincipal actor)
-    {
-        await RequirePermission(actor, "roles.read");
-        return await db.AspNetRoles.AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.DisplayName, x.Description, x.IsActive, x.IsSystemRole, x.ConcurrencyStamp, permissionIds = x.Permissions.Select(p => p.Id).ToArray() }).ToListAsync();
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Permissions(string id, PermissionEdit input) => SubmitForm(async () => { await SetPermissionsCore(User, id, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
 
     private async Task<object> CreateRoleCore(ClaimsPrincipal actor, RoleInput input)
     {
@@ -106,41 +84,12 @@ public sealed class RolesController(MyStockContext context) : BaseController(con
         await tx.CommitAsync();
     }
 
-    private async Task<object> RolePermissionsCore(ClaimsPrincipal actor, string roleId)
-    {
-        await RequirePermission(actor, "roles.read");
-        await RequirePermission(actor, "permissions.read");
-
-        var role = await db.AspNetRoles
-            .AsNoTracking()
-            .Where(item => item.Id == roleId)
-            .Select(item => new
-            {
-                item.Id,
-                item.Name,
-                item.DisplayName,
-                Permissions = item.Permissions
-                    .OrderBy(permission => permission.Code)
-                    .Select(permission => new
-                    {
-                        permission.Id,
-                        permission.Code,
-                        permission.Name,
-                        permission.Module
-                    })
-                    .ToList()
-            })
-            .SingleOrDefaultAsync();
-
-        return role ?? throw new AppFault(404, "Không tìm thấy Role.");
-    }
-
     private async Task SetPermissionsCore(ClaimsPrincipal actor, string roleId, PermissionEdit input)
     {
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         await RequirePermission(actor, "roles.permissions.update");
         var role = await EditableRoleCore(actor, roleId, input.ConcurrencyStamp);
-        var ids = input.PermissionIds.Distinct().ToArray();
+        var ids = (input.PermissionIds ?? Array.Empty<int>()).Distinct().ToArray();
         var selected = await db.Permissions.Include(x => x.PermissionAllowedScopes).Where(x => ids.Contains(x.Id)).ToListAsync();
         if (selected.Count != ids.Length)
             throw new AppFault(400, "Danh mục quyền không hợp lệ.");

@@ -31,8 +31,6 @@ try {
     New-Item -ItemType Directory -Force -Path $artifacts | Out-Null
     & dotnet build QuanLyCuDan/QuanLyCuDan.csproj -o "$artifacts/app" --nologo
     if ($LASTEXITCODE -ne 0) { throw 'Application build failed.' }
-    & node --test .validation/auth-client.test.cjs
-    if ($LASTEXITCODE -ne 0) { throw 'Authentication client tests failed.' }
 
     $env:ASPNETCORE_ENVIRONMENT = 'Development'
     $env:ConnectionStrings__MyStock = "Server=$SqlServer;Database=QuanLyCuDan;Integrated Security=True;Encrypt=False;TrustServerCertificate=True"
@@ -51,6 +49,8 @@ try {
     }
     if (!$ready) { throw "Application did not become ready. See $artifacts/server.log" }
 
+    & node .validation/auth-flow-smoke.cjs
+    if ($LASTEXITCODE -ne 0) { throw 'MVC JWT authentication tests failed.' }
     & node .validation/announcements-smoke.cjs
     if ($LASTEXITCODE -ne 0) { throw 'Notification management tests failed.' }
     Write-Host 'PASS: notification management build and workflow tests.'

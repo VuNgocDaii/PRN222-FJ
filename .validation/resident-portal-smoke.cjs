@@ -52,6 +52,9 @@ let initialized = false;
         INSERT Residents(FullName,DateOfBirth,Gender,HouseholdId,RelationshipToHead,ResidenceStatus,PhoneNumber) VALUES('Portal Test','1990-01-01','OTHER',@house,N'Chủ hộ','RESIDING','0900000000');
         DECLARE @resident bigint=SCOPE_IDENTITY();
         UPDATE Households SET HeadResidentId=@resident WHERE Id=@house;
+        UPDATE AspNetUsers SET ResidentId=@resident WHERE Id='${fixture}';
+        INSERT UserRoleAssignments(UserId,RoleId,ScopeType,AssignedByUserId,AssignedAt,ValidFrom)
+            SELECT '${fixture}',Id,'SELF','${fixture}',SYSUTCDATETIME(),SYSUTCDATETIME() FROM AspNetRoles WHERE Name IN('ACCOUNT','RESIDENT') AND IsActive=1;
         INSERT FeeCampaigns(Code,ResidentialGroupId,Name,FeeType,AmountPerHousehold,CreatedByUserId) VALUES('${fixture.slice(0,30)}',@group,'${fixture}_fee','REQUIRED',432123,'${fixture}');
         DECLARE @campaign bigint=SCOPE_IDENTITY(); INSERT Payments(CampaignId,HouseholdId,AmountDue) VALUES(@campaign,@house,432123);
         INSERT Announcements(ResidentialGroupId,Title,Body,Audience,Status,CreatedByUserId,PublishedByUserId,PublishedAt,ExpiresAt)
@@ -74,29 +77,9 @@ let initialized = false;
     assert.equal((await visitor('/Resident')).status, 302);
     assert.equal((await visitor('/Resident/requests', { method: 'POST', form: {} })).status, 302);
     const admin = browser(); assert.equal(await login(admin, 'admin'), '/Admin');
-    const approvedPage = await html(admin, '/Registrations?status=APPROVED');
-    const detailStart = approvedPage.indexOf('id="detail-' + fixture + '"');
-    assert.ok(detailStart >= 0, 'Approved unlinked account missing from registration UI');
-    const reviewDialog = approvedPage.slice(detailStart, approvedPage.indexOf('</dialog>', detailStart));
-    assert.ok(decoded(reviewDialog).includes('Liên kết và cấp quyền cư dân'));
-    const reviewFields = { UserId: fixture, RowVersion: input(reviewDialog, 'RowVersion'), Approve: 'true', Verified: 'true', status: input(reviewDialog, 'status') };
-    const review = fields => post(admin, '/Registrations', csrf(reviewDialog), { ...reviewFields, ...fields });
-    assert.equal((await review({})).status, 302);
-    assert.equal(sql(`SELECT COUNT(*) FROM AspNetUsers WHERE Id='${fixture}' AND ResidentId IS NOT NULL`), '0');
-    const occupiedResident = sql("SELECT ResidentId FROM AspNetUsers WHERE UserName='dan03'");
-    assert.equal((await review({ ResidentId: occupiedResident })).status, 302);
-    assert.equal(sql(`SELECT COUNT(*) FROM UserRoleAssignments WHERE UserId='${fixture}'`), '0', 'Failed link granted roles');
-    const linkResident = sql(`SELECT r.Id FROM Residents r JOIN Households h ON h.Id=r.HouseholdId WHERE h.CreatedByUserId='${fixture}'`);
-    assert.equal((await review({ ResidentId: linkResident, RowVersion: 'AAAAAAAAAAA=' })).status, 302);
-    assert.equal(sql(`SELECT COUNT(*) FROM AspNetUsers WHERE Id='${fixture}' AND ResidentId IS NOT NULL`), '0', 'Stale link accepted');
-    const linkedResponse = await review({ ResidentId: linkResident });
-    assert.equal(linkedResponse.status, 302);
-    assert.equal(linkedResponse.headers.get('location'), '/Registrations?status=APPROVED');
-    assert.equal(sql(`SELECT ResidentId FROM AspNetUsers WHERE Id='${fixture}'`), linkResident);
-    assert.equal(sql(`SELECT COUNT(*) FROM UserRoleAssignments a JOIN AspNetRoles r ON r.Id=a.RoleId WHERE a.UserId='${fixture}' AND a.ScopeType='SELF' AND r.Name IN('ACCOUNT','RESIDENT')`), '2');
-    assert.equal((await review({ ResidentId: occupiedResident })).status, 302);
-    assert.equal(sql(`SELECT ResidentId FROM AspNetUsers WHERE Id='${fixture}'`), linkResident, 'Already linked identity was replaced');
-    console.log('PASS: approved-account linking UI/action, missing/occupied/stale profile guards, automatic resident roles and protection of existing links');
+    // Registration onboarding is covered by registration-onboarding-smoke.cjs.
+    // This fixture starts linked so portal checks do not depend on the retired manual-link form.
+    await html(admin, '/Registrations?status=APPROVED');
     const resident = browser();
     assert.equal(await login(resident, fixture), '/Resident');
     for (const section of ['', '/profile', '/household', '/requests', '/feedback', '/fees', '/announcements', '/notifications']) await html(resident, '/Resident' + section);

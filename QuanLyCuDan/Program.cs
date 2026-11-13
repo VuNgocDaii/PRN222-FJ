@@ -26,38 +26,7 @@ builder.Services.AddAntiforgery(o =>
     o.Cookie.SecurePolicy = cookiePolicy;
     o.Cookie.SameSite = SameSiteMode.Strict;
 });
-builder.Services.AddAuthentication("Cookies").AddCookie("Cookies", o =>
-{
-    o.LoginPath = "/Account/Login";
-    o.Cookie.Name = "qlcd.auth";
-    o.Cookie.HttpOnly = true;
-    o.Cookie.SecurePolicy = cookiePolicy;
-    o.Cookie.SameSite = SameSiteMode.Strict;
-    o.SlidingExpiration = false;
-    o.Events.OnValidatePrincipal = async c =>
-    {
-        if (!await BaseController.ValidSession(c.HttpContext.RequestServices.GetRequiredService<MyStockContext>(), c.Principal!))
-        {
-            c.RejectPrincipal();
-            await c.HttpContext.SignOutAsync("Cookies");
-        }
-    };
-    o.Events.OnRedirectToLogin = c =>
-    {
-        if (c.Request.Path.StartsWithSegments("/api"))
-            c.Response.StatusCode = 401;
-        else
-            c.Response.Redirect(c.RedirectUri);
-        return Task.CompletedTask;
-    };
-    o.Events.OnRedirectToAccessDenied = c =>
-    {
-        c.Response.StatusCode = 403;
-        return Task.CompletedTask;
-    };
-}).AddScheme<AuthenticationSchemeOptions, BearerHandler>("Bearer", _ =>
-{
-});
+builder.Services.AddAuthentication("Cookies").AddScheme<AuthenticationSchemeOptions, JwtCookieHandler>("Cookies", _ => { });
 builder.Services.AddAuthorization();
 // SignalR dùng cookie đăng nhập sẵn có của website.
 builder.Services.AddSignalR();
@@ -65,8 +34,13 @@ builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = 429;
     o.AddPolicy("login", c => RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString() ?? "local", _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
-    o.AddPolicy("refresh", c => RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString() ?? "local", _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
+static IResult ErrorPage(int status, string message)
+{
+    var safeMessage = System.Net.WebUtility.HtmlEncode(message);
+    return Results.Content($"<!doctype html><html lang='vi'><head><meta charset='utf-8'><title>Lỗi {status}</title></head><body><h1>Không thể thực hiện thao tác</h1><p>{safeMessage}</p><a href='/'>Về trang chủ</a></body></html>", "text/html; charset=utf-8", statusCode: status);
+}
+
 var app = builder.Build();
 app.Use(async (context, next) =>
 {
@@ -76,24 +50,24 @@ app.Use(async (context, next) =>
     }
     catch (AppFault e)
     {
-        await Results.Problem(statusCode: e.Status, title: e.Message).ExecuteAsync(context);
+        await ErrorPage(e.Status, e.Message).ExecuteAsync(context);
     }
     catch (DbUpdateConcurrencyException)
     {
-        await Results.Problem(statusCode: 409, title: "Dữ liệu đã thay đổi. Hãy tải lại.").ExecuteAsync(context);
+        await ErrorPage(409, "Dữ liệu đã thay đổi. Hãy tải lại.").ExecuteAsync(context);
     }
     catch (DbUpdateException e) when (e.InnerException is Microsoft.Data.SqlClient.SqlException sql && (sql.Number == 2601 || sql.Number == 2627 || sql.Number == 1205))
     {
-        await Results.Problem(statusCode: 409, title: "Dữ liệu bị trùng hoặc có thao tác đồng thời. Hãy tải lại.").ExecuteAsync(context);
+        await ErrorPage(409, "Dữ liệu bị trùng hoặc có thao tác đồng thời. Hãy tải lại.").ExecuteAsync(context);
     }
     catch (Microsoft.Data.SqlClient.SqlException e) when (e.Number == 1205)
     {
-        await Results.Problem(statusCode: 409, title: "Có thao tác đồng thời. Hãy thử lại.").ExecuteAsync(context);
+        await ErrorPage(409, "Có thao tác đồng thời. Hãy thử lại.").ExecuteAsync(context);
     }
     catch (Exception e)
     {
         app.Logger.LogError(e, "Request failed");
-        await Results.Problem(statusCode: 500, title: "Không thể xử lý yêu cầu. Kiểm tra kết nối cơ sở dữ liệu hoặc log máy chủ.", detail: localDevelopment ? e.GetBaseException().Message : null).ExecuteAsync(context);
+        await ErrorPage(500, "Không thể xử lý yêu cầu. Kiểm tra kết nối cơ sở dữ liệu hoặc log máy chủ.").ExecuteAsync(context);
     }
 });
 // Configure the HTTP request pipeline.
@@ -109,7 +83,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.Use(async (context, next) =>
 {
-    if (!HttpMethods.IsGet(context.Request.Method) && (context.Request.Path.StartsWithSegments("/api/auth") || context.Request.Path.StartsWithSegments("/Account")) && context.Request.Headers.TryGetValue("Origin", out var origin) && origin.ToString() != context.Request.Scheme + "://" + context.Request.Host)
+    if (!HttpMethods.IsGet(context.Request.Method) && context.Request.Path.StartsWithSegments("/Account") && context.Request.Headers.TryGetValue("Origin", out var origin) && origin.ToString() != context.Request.Scheme + "://" + context.Request.Host)
     {
         context.Response.StatusCode = 400;
         return;

@@ -1,0 +1,21 @@
+@model List<AspNetUser>
+@{ Layout = "_ManagementLayout"; ViewData["Title"] = "TÃ i khoáº£n"; var access = ViewData["Permissions"] as HashSet<string> ?? new(); var page = (int)ViewData["Page"]!; var total = (int)ViewData["Total"]!; }
+<header class="page-header"><h1>Quáº£n lÃ½ tÃ i khoáº£n</h1></header>
+<section class="panel"><form asp-action="Index" method="get" class="inline"><label>TÃ¬m tÃ i khoáº£n<input name="search" value="@ViewData["Search"]" maxlength="200"></label><button class="primary">TÃ¬m kiáº¿m</button></form><p>@total tÃ i khoáº£n</p></section>
+@if (access.Contains("accounts.create")) {
+<section class="panel"><h2>Táº¡o tÃ i khoáº£n</h2><form asp-action="Create" method="post">
+<label>TÃªn Ä‘Äƒng nháº­p<input name="UserName" required maxlength="256"></label><label>Há» tÃªn<input name="FullName" required maxlength="150"></label><label>Máº­t kháº©u<input name="Password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><button class="primary">Táº¡o tÃ i khoáº£n</button></form></section>
+}
+@foreach (var item in Model) {
+<section class="panel"><h2>@item.UserName</h2><p>@item.FullName Â· @item.VerificationStatus Â· @(item.IsActive ? "Hoáº¡t Ä‘á»™ng" : "ÄÃ£ khÃ³a")</p>
+@if (access.Contains("accounts.update")) {
+<form asp-action="Update" asp-route-id="@item.Id" method="post"><input type="hidden" name="RowVersion" value="@Convert.ToBase64String(item.RowVersion)">
+<label>Há» tÃªn<input name="FullName" value="@item.FullName" required maxlength="150"></label>
+@if (access.Contains("accounts.lock")) { <label><input name="IsActive" type="checkbox" value="true" checked="@item.IsActive"> Hoáº¡t Ä‘á»™ng</label><input name="IsActive" type="hidden" value="false"> }
+else { <input name="IsActive" type="hidden" value="@item.IsActive.ToString().ToLowerInvariant()"> }
+<button class="primary">LÆ°u tÃ i khoáº£n</button></form>
+}
+@if (access.Contains("roles.assign")) { <a asp-controller="RoleAssignments" asp-action="Index" asp-route-userId="@item.Id">Vai trÃ² Ä‘Æ°á»£c gÃ¡n</a> }
+</section>
+}
+<nav class="inline">@if (page > 1) { <a asp-action="Index" asp-route-page="@(page - 1)" asp-route-search="@ViewData["Search"]">â† Trang trÆ°á»›c</a> }<span>Trang @(page)</span>@if (page * 30 < total) { <a asp-action="Index" asp-route-page="@(page + 1)" asp-route-search="@ViewData["Search"]">Trang sau â†’</a> }</nav>

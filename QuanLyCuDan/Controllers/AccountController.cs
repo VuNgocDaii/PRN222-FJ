@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -6,7 +7,7 @@ using QuanLyCuDan.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace QuanLyCuDan.Controllers;
-public sealed class AccountController(MyStockContext context, TokenIssuer tokens, IWebHostEnvironment environment) : AuthControllerBase(context, tokens, environment)
+public sealed class AccountController(MyStockContext context) : AuthControllerBase(context)
 {
     [AllowAnonymous, HttpGet]
     public async Task<IActionResult> Register()
@@ -54,7 +55,6 @@ public sealed class AccountController(MyStockContext context, TokenIssuer tokens
         try
         {
             var result = await LoginCore(input, Request.Headers.UserAgent.ToString());
-            await CreateTokensCore(HttpContext, result.Session);
             await SignInCore(HttpContext, result.User, result.Session);
             var isManager = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(Effective(result.User.Id), x => x.PermissionCode == "accounts.read" && x.ScopeType == "SYSTEM");
             var isResident = await Effective(result.User.Id).AnyAsync(x => x.PermissionCode == "profile.self.read" && x.ScopeType == "SELF");
@@ -80,7 +80,7 @@ public sealed class AccountController(MyStockContext context, TokenIssuer tokens
     {
         var user = await db.AspNetUsers.AsNoTracking().SingleAsync(u => u.Id == CurrentUserId(User));
         ViewData["CanSubmitResidentProfile"] = user.ResidentId == null && user.VerificationStatus == "APPROVED" && !await IsAdmin(user.Id);
-        return View();
+        return View("Profile");
     }
 
     [Authorize(AuthenticationSchemes = "Cookies"), HttpGet]
@@ -113,6 +113,25 @@ public sealed class AccountController(MyStockContext context, TokenIssuer tokens
         await LogoutCore(HttpContext);
         TempData["RegistrationMessage"] = "Đã gửi thông tin cư dân. Vui lòng chờ quản trị viên xác minh và phê duyệt trước khi đăng nhập lại.";
         return RedirectToAction(nameof(Login));
+    }
+
+
+    [Authorize(AuthenticationSchemes = "Cookies"), HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(PasswordInput input, string? confirmPassword)
+    {
+        if (input.NewPassword != confirmPassword) ModelState.AddModelError("", "Mật khẩu xác nhận không khớp.");
+        if (ModelState.IsValid)
+        {
+            try
+            {
+                await ChangePasswordCore(User, input);
+                await HttpContext.SignOutAsync("Cookies");
+                TempData["RegistrationMessage"] = "Đã đổi mật khẩu. Hãy đăng nhập lại.";
+                return RedirectToAction(nameof(Login));
+            }
+            catch (AppFault error) { ModelState.AddModelError("", error.Message); }
+        }
+        return await Profile();
     }
 
     private async Task<AspNetUser> ApplicantAccount()

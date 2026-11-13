@@ -29,27 +29,10 @@
                 <a href="/Feedback" class="nav-item @(controller == "Feedback" ? "active" : "")">Phản ánh / Góp ý</a>
                 @if (access.Contains("accounts.read") || access.Contains("roles.read") || access.Contains("permissions.read"))
                 {
-                    @if (isAdminPage)
-                    {
-                        <button data-tab="users" class="nav-item" hidden="@(!access.Contains("accounts.read"))">Tài khoản</button>
-                        <button data-tab="roles" class="nav-item" hidden="@(!access.Contains("roles.read"))">Vai trò</button>
-                        <button data-tab="permissions" class="nav-item" hidden="@(!access.Contains("permissions.read"))">Quyền truy cập</button>
-                    }
-                    else
-                    {
-                        @if (access.Contains("accounts.read"))
-                        {
-                            <a href="/Admin?tab=users" class="nav-item">Tài khoản</a>
-                        }
-                        @if (access.Contains("roles.read"))
-                        {
-                            <a href="/Admin?tab=roles" class="nav-item">Vai trò</a>
-                        }
-                        @if (access.Contains("permissions.read"))
-                        {
-                            <a href="/Admin?tab=permissions" class="nav-item">Quyền truy cập</a>
-                        }
-                    }
+                    @if (access.Contains("accounts.read")) { <a href="/Users" class="nav-item">Tài khoản</a> }
+                    @if (access.Contains("roles.read")) { <a href="/Roles" class="nav-item">Vai trò</a> }
+                    @if (access.Contains("permissions.read")) { <a href="/Permissions" class="nav-item">Quyền truy cập</a> }
+                    @if (access.Contains("roles.assign")) { <a href="/RoleAssignments" class="nav-item">Gán vai trò</a> }
                 }
                 @if (canReview)
                 {
@@ -61,10 +44,10 @@
                     <span class="account-name">@User.Identity?.Name</span>
                     <button type="button" class="password-link" id="open-password-dialog">Thay đổi mật khẩu</button>
                 </div>
-                <form asp-controller="Account" asp-action="Logout" method="post" onsubmit="localStorage.removeItem('qlcd.accessToken')"><button class="secondary wide" type="submit">Đăng xuất</button></form>
+                <form asp-controller="Account" asp-action="Logout" method="post"><button class="secondary wide" type="submit">Đăng xuất</button></form>
             </div>
         </aside>
-        <main class="workspace">@RenderBody()</main>
+        <main class="workspace">@if (TempData["Message"] is string message) { <p class="message success">@message</p> }<div asp-validation-summary="All" class="validation" role="alert"></div>@RenderBody()</main>
     </div>
     <dialog id="password-dialog" class="password-dialog" aria-labelledby="password-dialog-title">
         <div class="section-heading">
@@ -73,7 +56,7 @@
         </div>
         <p class="muted small">Bạn cần đăng nhập lại sau khi đổi mật khẩu.</p>
         <p id="password-notice" class="message error" role="alert" hidden></p>
-        <form id="change-password-form">
+        <form id="change-password-form" asp-controller="Account" asp-action="ChangePassword" method="post">
             <label>Mật khẩu hiện tại<input name="currentPassword" type="password" autocomplete="current-password" required autofocus></label>
             <label>Mật khẩu mới<input name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
             <label>Xác nhận mật khẩu mới<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
@@ -92,8 +75,8 @@
         </form>
     </dialog>
     <script src="~/js/action-dialog.js" asp-append-version="true" defer></script>
-    <script src="~/js/auth-client.js" asp-append-version="true" defer></script>
     <script src="~/js/password-dialog.js" asp-append-version="true" defer></script>
+    <partial name="_SessionToken" />
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

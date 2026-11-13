@@ -1,6 +1,6 @@
 # QuanLyCuDan
 
-ASP.NET Core MVC application for resident management. Business logic lives in controllers using EF Core and SQL Server; there is no service layer.
+ASP.NET Core MVC application for resident management, using Razor Views, EF Core and SQL Server. Controllers process ordinary HTML forms and return `View(model)` or redirect after successful writes. There are no JSON API controllers.
 
 ## Run locally
 
@@ -25,11 +25,11 @@ Residence requests apply to the signed-in resident. Moving into or registering i
 
 Only the current head can see assessed household charges and receipts. Residents contact the fee collector to pay; the portal does not mark payments as paid. Required and opted-in voluntary assessments use their saved amounts.
 
-For an account already marked APPROVED but missing `ResidentId`, sign in as an administrator and open **Duyệt đăng ký → Đã duyệt → Xem chi tiết**. Select the correct unused resident profile, confirm the identity check, then choose **Liên kết và cấp quyền cư dân**. This links the profile and supplies the ACCOUNT/RESIDENT roles with SELF scope in one transaction. Existing linked identities cannot be replaced through this action.
+For an APPROVED account missing ResidentId, open Registrations > Approved > Details. The screen suggests an unlinked resident with the same citizen ID (CCCD). Verify the displayed identity and confirm the link; ACCOUNT/RESIDENT roles with SELF scope are granted in the same transaction.
 
 New applicants register at `/Account/Register` with their date of birth, gender, optional citizen ID/occupation, address, group and residence type. These details are stored as a typed JSON profile on the pending account; no official resident/household or roles are created at signup. An existing approved account without a linked resident can choose **Bổ sung thông tin cư dân** from `/Account/Profile` and submit the same details at `/Account/ResidentRegistration`. Submission returns that account to PENDING and signs it out until review.
 
-Administrators open **Duyệt đăng ký → Chờ duyệt → Xem chi tiết**, verify the submitted data, then either link an existing resident or expand **Chưa có hồ sơ? Tạo hồ sơ từ thông tin đăng ký**. For a new resident, choose an existing household in the submitted group and specify the relationship to its head, or explicitly create a new household at the submitted address (the applicant becomes its head). Approval creates the resident, sets `ResidentId`, grants ACCOUNT/RESIDENT with SELF scope and records a STAFF residence change in one transaction. Duplicate citizen IDs, already linked profiles, stale submissions and unconfirmed verification are rejected.
+Administrators open Registrations > Pending > Details, compare the submitted information with the existing resident matched by citizen ID (CCCD), confirm the identity, then approve or reject. Approval links that resident, grants ACCOUNT/RESIDENT with SELF scope and records an audit in one transaction. There is no manual resident selector or resident/household creation during review. If CCCD is missing or no unlinked resident matches, approval is blocked: the citizen ID must be supplied and staff must arrange an official resident record first. A standalone staff resident-entry screen is not implemented yet. Reused resident identities, unconfirmed verification and stale or repeated approvals are rejected by the server.
 
 Each pending request can receive one optional PDF/JPEG/PNG attachment up to 5 MB. Files are stored under ignored `QuanLyCuDan/.local/attachments`, outside `wwwroot`, with content signature checks, hashes and authorized downloads. Back up this folder together with the database. Seeded attachment metadata does not create physical files.
 
@@ -47,17 +47,20 @@ Do not commit SQL credentials, signing keys or real resident data. For a stable 
 
 ## Structure
 
-- `QuanLyCuDan/Controllers`: MVC/API actions, database operations, transactions and permission checks.
-- `BaseController` and `AuthControllerBase`: common controller checks and authentication code.
-- `QuanLyCuDan/Auth`: request contracts, JWT issuer and Bearer authentication handler.
+- `QuanLyCuDan/Views`: Razor Views (`.cshtml`) rendered by controller actions with `View(model)`. Layouts and reusable partials live in `Views/Shared`. These views do not use `@page` or `.cshtml.cs` PageModels.
+- `QuanLyCuDan/Controllers`: MVC actions for public pages, accounts, administration, registration review, resident services, feedback and announcements. Account, role, permission and role-assignment management use server-rendered forms.
+- `BaseController` and `AuthControllerBase`: shared permission checks, cookie sign-in and token lifecycle.
+- `QuanLyCuDan/Auth`: form input contracts, JWT issuer and `JwtCookieHandler`, registered under the `Cookies` scheme for MVC and SignalR.
 - `QuanLyCuDan/Models`: database-first EF Core models and view models.
-- `QuanLyCuDan/Views`, `wwwroot`: Razor views and frontend assets.
+- `QuanLyCuDan/wwwroot`: frontend scripts, styles and static assets.
 - `QuanLyCuDan/Hubs`: basic authenticated SignalR connection; `/SignalR` is the connection test page.
 - `SignalRChat`: separate sample project; not required to run the main application's Hub.
 
-API login returns an access token and sets an HttpOnly refresh cookie. The frontend refreshes expired tokens; MVC pages use authentication cookies. There is no `/api/auth/token` endpoint.
+Login is a POST to `AccountController`, which issues an HS256 JWT in the `qlcd.auth` cookie (`HttpOnly`, `SameSite=Strict`, `Secure` outside local HTTP development). The browser sends it with MVC forms and SignalR requests. Authenticated Razor layouts also provide the JWT to `jwt-storage.js`, which stores `{ accessToken, expiresAt }` under `localStorage["qlcd.accessToken"]`; anonymous pages clear that entry after logout, password change or session expiration. Every authenticated request checks the signature, issuer, audience, expiration and database session; changing localStorage does not bypass those checks. The JWT expires with the session, at most 30 days after login; the cookie is a browser-session cookie. Logout revokes the current session, and password changes revoke all sessions immediately. The former API access/refresh token flow is retired. POST actions validate antiforgery tokens. Configure a stable `Auth__SigningKey` to preserve logins across application restarts.
 
 ## Checks
+
+With the app running against the local fictional demo database, set `AUTH_TEST_URL` to its URL and run `node .validation/razor-views-smoke.cjs`. This checks MVC routes, rendered action links and typed form fields, layout scripts/styles, cookie authentication, cache headers, antiforgery, logout and attachment routing. The resident portal suite starts with a linked fixture; registration and identity-linking checks live in `registration-onboarding-smoke.cjs`.
 
 Run the notification management checks against the local fictional demo database:
 
@@ -65,16 +68,17 @@ Run the notification management checks against the local fictional demo database
 powershell -ExecutionPolicy Bypass -File .validation/test-notification-management.ps1 -SqlServer localhost
 ```
 
-The runner applies additive upgrades, builds the main app, runs authentication client tests, starts an isolated app on port 5199, and runs the announcement workflow suite. It checks draft/edit/submit/reject/approve/publish/unpublish, permissions, public/private visibility, notification recipients, CSRF and concurrency. Temporary workflow fixtures are cleaned up by the suite, and the runner stops its app and restores environment variables. Logs are saved under `QuanLyCuDan/.local/notification-tests`. Use `-Port` to choose another port or `-SqlServer '.\SQLEXPRESS'` for SQL Express. Requires .NET 8+, Node.js 22+ and `sqlcmd` with Windows Authentication; use demo data only.
+The runner applies additive upgrades, builds the main app, starts an isolated app on port 5199, and runs MVC JWT authentication and announcement workflow tests. It checks draft/edit/submit/reject/approve/publish/unpublish, permissions, public/private visibility, notification recipients, CSRF and concurrency. Temporary workflow fixtures are cleaned up by the suite, and the runner stops its app and restores environment variables. Logs are saved under `QuanLyCuDan/.local/notification-tests`. Use `-Port` to choose another port or `-SqlServer '.\SQLEXPRESS'` for SQL Express. Requires .NET 8+, Node.js 22+ and `sqlcmd` with Windows Authentication; use demo data only.
 
 ```powershell
 dotnet build QuanLyCuDan.sln
-node --test .validation/auth-client.test.cjs
 ```
 
-For HTTP smoke tests, start the main application on `http://127.0.0.1:5098` with a local demo database, then run:
+For HTTP smoke tests, start the main application with a local demo database, then run (set the SQL server to match the app):
 
 ```powershell
+$env:AUTH_TEST_URL = 'http://127.0.0.1:5044'
+$env:PORTAL_TEST_SQL_SERVER = 'localhost'
 node .validation/auth-flow-smoke.cjs
 node .validation/controllers-smoke.cjs
 ```

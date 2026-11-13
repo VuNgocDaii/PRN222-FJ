@@ -7,59 +7,24 @@ using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
 
 namespace QuanLyCuDan.Controllers;
-[ApiController, Route("api/permissions")]
-[Authorize(AuthenticationSchemes = "Bearer")]
+[Authorize(AuthenticationSchemes = "Cookies")]
 public sealed class PermissionsController(MyStockContext context) : BaseController(context)
 {
     [HttpGet]
-    public async Task<IActionResult> List()
+    public async Task<IActionResult> Index()
     {
-        return Ok(await PermissionsCore(User));
+        await RequirePermission(User, "permissions.read");
+        return View("Index", await db.Permissions.AsNoTracking().Include(p => p.PermissionAllowedScopes).Include(p => p.Roles).OrderBy(p => p.Module).ThenBy(p => p.Code).ToListAsync());
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Create(PermissionCreateInput input)
-    {
-        return Ok(await CreatePermissionCore(User, input));
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Create(PermissionCreateInput input) => SubmitForm(async () => { await CreatePermissionCore(User, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, PermissionUpdateInput input)
-    {
-        await UpdatePermissionCore(User, id, input);
-        return NoContent();
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Update(int id, PermissionUpdateInput input) => SubmitForm(async () => { await UpdatePermissionCore(User, id, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id, PermissionDeleteInput input)
-    {
-        await DeletePermissionCore(User, id, input);
-        return NoContent();
-    }
-
-    private async Task<object> PermissionsCore(ClaimsPrincipal actor)
-    {
-        await RequirePermission(actor, "permissions.read");
-        var catalog = await db.Permissions
-            .AsNoTracking()
-            .Include(item => item.PermissionAllowedScopes)
-            .Include(item => item.Roles)
-            .OrderBy(item => item.Module)
-            .ThenBy(item => item.Code)
-            .ToListAsync();
-
-        return catalog.Select(item => new
-        {
-            item.Id,
-            item.Code,
-            item.Name,
-            item.Module,
-            item.Description,
-            Scopes = item.PermissionAllowedScopes.Select(scope => scope.ScopeType).OrderBy(scope => scope).ToArray(),
-            RoleCount = item.Roles.Count,
-            Version = PermissionVersionCore(item)
-        }).ToList();
-    }
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> Delete(int id, PermissionDeleteInput input) => SubmitForm(async () => { await DeletePermissionCore(User, id, input); }, () => Index(), () => RedirectToAction(nameof(Index)));
 
     private async Task<object> CreatePermissionCore(ClaimsPrincipal actor, PermissionCreateInput input)
     {
@@ -169,7 +134,8 @@ public sealed class PermissionsController(MyStockContext context) : BaseControll
         return selected;
     }
 
-    private static string PermissionVersionCore(Permission permission)
+    [NonAction]
+    public static string PermissionVersionCore(Permission permission)
     {
         var payload = System.Text.Json.JsonSerializer.Serialize(new
         {

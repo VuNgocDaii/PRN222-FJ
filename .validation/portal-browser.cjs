@@ -51,6 +51,10 @@ const pause = ms => new Promise(resolve=>setTimeout(resolve,ms));
     await navigate(base+'/Account/Login');
     await evaluate(`document.querySelector('[name="UserName"]').value=${JSON.stringify(process.env.PORTAL_TEST_USER||'dan03')};document.querySelector('[name="Password"]').value=${JSON.stringify(process.env.PORTAL_TEST_PASSWORD||'12345678')};document.querySelector('form').requestSubmit();`);
     for(let attempt=0;attempt<60;attempt++){await pause(100);if(await evaluate('location.pathname === "/Resident" && document.readyState === "complete"'))break;if(attempt===59)throw new Error('Resident login/navigation failed');}
+    const storedJwt = await evaluate('JSON.parse(localStorage.getItem("qlcd.accessToken"))');
+    assert.ok(storedJwt?.accessToken?.split('.').length === 3 && storedJwt.expiresAt > Date.now(), 'JWT was not saved in localStorage after MVC login');
+    await navigate(base+'/Resident');
+    assert.equal((await evaluate('JSON.parse(localStorage.getItem("qlcd.accessToken"))')).accessToken, storedJwt.accessToken, 'JWT changed on page reload');
     await noOverflow();await capture('resident-mobile.png');
     await navigate(base+'/Resident/requests');await noOverflow();
     assert.equal(await evaluate('document.querySelector("[data-request-field=target]").hidden'),true);
@@ -65,6 +69,8 @@ const pause = ms => new Promise(resolve=>setTimeout(resolve,ms));
     console.log('PASS: Chrome desktop/mobile layouts, resident login/navigation, no horizontal overflow, and conditional request fields');
     }
     await send('Page.navigate',{url:base+'/Account/Profile'});await pause(200);
-    await evaluate(`document.querySelector('form[action="/Account/Logout"]').requestSubmit()`);await pause(300);
+    await evaluate(`document.querySelector('form[action="/Account/Logout"]').requestSubmit()`);
+    for(let attempt=0;attempt<60;attempt++){await pause(100);if(await evaluate('location.pathname === "/Account/Login" && document.readyState === "complete"'))break;if(attempt===59)throw new Error('Logout navigation failed');}
+    assert.equal(await evaluate('localStorage.getItem("qlcd.accessToken")'), null, 'Logout did not clear localStorage');
     await call('Browser.close');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{if(socket)socket.close();child.kill();});
