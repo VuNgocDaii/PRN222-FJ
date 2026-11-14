@@ -10,7 +10,7 @@ public interface IResidentService
     Task<ResidentPortalViewModel> GetPortalAsync(ClaimsPrincipal actor, string section, int page = 1);
     Task<Announcement?> GetAnnouncementAsync(ClaimsPrincipal actor, long id);
     Task UpdateContactAsync(ClaimsPrincipal actor, ContactInput input);
-    Task<long> CreateRequestAsync(ClaimsPrincipal actor, ResidentRequestInput input);
+    Task<long> CreateRequestAsync(ClaimsPrincipal actor, ResidentRequestInput input, Stream? attachment, long attachmentLength, string attachmentFileName);
     Task<ResidentRequestDetailViewModel?> GetDetailAsync(ClaimsPrincipal actor, long id);
     Task CancelAsync(ClaimsPrincipal actor, long id, string rowVersion);
     Task ReplyAsync(ClaimsPrincipal actor, long id, string body, string clientKey);

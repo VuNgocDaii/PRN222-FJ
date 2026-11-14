@@ -25,6 +25,12 @@ public sealed class FeedbackRepository(MyStockContext db) : IFeedbackRepository
     public Task<Request?> FindInScopeWithSubmitterAsync(long id, string? submittedBy, IReadOnlyCollection<long>? groupIds) =>
         Scoped(submittedBy, groupIds).Include(x => x.SubmittedByUser).FirstOrDefaultAsync(x => x.Id == id);
 
+    public Task<Request?> FindFeedbackInGroupsAsync(long id, IReadOnlyCollection<long> groupIds) =>
+        db.Requests.AsNoTracking().Where(x => x.RequestKind == "FEEDBACK" && x.Id == id && groupIds.Contains(x.AssignedGroupId)).FirstOrDefaultAsync();
+
+    public Task<Request?> FindFeedbackBySubmitterAsync(long id, string userId) =>
+        db.Requests.AsNoTracking().Where(x => x.RequestKind == "FEEDBACK" && x.Id == id && x.SubmittedByUserId == userId).FirstOrDefaultAsync();
+
     public Task<List<FeedbackMessage>> GetMessagesAsync(long requestId) =>
         db.Activities.AsNoTracking().Where(a => a.RequestId == requestId && a.ActivityType == "MESSAGE").OrderBy(a => a.OccurredAt)
             .Select(a => new FeedbackMessage(a.ActorUser!.FullName, a.Body!, a.OccurredAt, a.EventCode == "OFFICIAL_REPLY")).ToListAsync();

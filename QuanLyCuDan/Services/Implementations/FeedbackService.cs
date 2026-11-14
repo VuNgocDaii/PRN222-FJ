@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
 using QuanLyCuDan.Repositories.Interfaces;
@@ -11,6 +12,7 @@ public sealed class FeedbackService(
     IPermissionRepository permissions,
     IFeedbackRepository feedback,
     IFeedbackNotifier notifier,
+    IAttachmentStorage storage,
     IUnitOfWork unitOfWork) : IFeedbackService
 {
     public async Task<FeedbackPageViewModel> GetAsync(ClaimsPrincipal actor, long? id, string? notice)
@@ -37,14 +39,15 @@ public sealed class FeedbackService(
             var request = await feedback.FindInScopeWithSubmitterAsync(selectedId.Value, submittedBy, groups);
             if (request is not null)
                 selected = new FeedbackConversation(request.Id, request.Code, request.Subject, request.Category ?? "OTHER", request.Status,
-                    request.SubmittedAt, request.SubmittedByUser.FullName, request.Body, await feedback.GetMessagesAsync(request.Id));
+                    request.SubmittedAt, request.SubmittedByUser.FullName, request.Body, await feedback.GetMessagesAsync(request.Id),
+                    request.AttachmentStorageKey != null && (staff || request.SubmittedByUserId == userId), request.AttachmentFileName);
         }
         var canSubmit = residentId is not null && await permissions.HasAnyAsync(userId, "feedback.self.create");
         var canManage = staff && (await permissions.HasAnyAsync(userId, "feedback.process") || await permissions.HasAnyAsync(userId, "feedback.reply"));
         return new FeedbackPageViewModel { CanSubmit = canSubmit, CanManage = canManage, Notice = notice, Items = rows, Selected = selected };
     }
 
-    public async Task<long> CreateAsync(ClaimsPrincipal actor, string subject, string category, string body)
+    public async Task<long> CreateAsync(ClaimsPrincipal actor, string subject, string category, string body, Stream? attachment, long attachmentLength, string attachmentFileName)
     {
         subject = subject.Trim();
         body = body.Trim();
@@ -62,10 +65,45 @@ public sealed class FeedbackService(
             AssignedGroupId = groupId, RequestType = "FEEDBACK", Category = category, Subject = subject, Body = body, Status = "PENDING",
             ClientRequestKey = Guid.NewGuid().ToString("N"), SubmittedAt = now
         };
+        byte[]? attachmentBytes = null;
+        string? storageKey = null;
+        string? contentType = null;
+        if (attachment != null)
+        {
+            if (attachmentLength is < 1 or > 5242880)
+                throw new AppFault(400, "Tệp đính kèm phải có dung lượng tối đa 5 MB.");
+            using var memory = new MemoryStream();
+            await attachment.CopyToAsync(memory);
+            attachmentBytes = memory.ToArray();
+            if (attachmentBytes.Length is < 1 or > 5242880)
+                throw new AppFault(400, "Tệp đính kèm phải có dung lượng tối đa 5 MB.");
+            var extension = Path.GetExtension(attachmentFileName).ToLowerInvariant();
+            if (extension == ".pdf" && attachmentBytes.AsSpan().StartsWith("%PDF-"u8)) contentType = "application/pdf";
+            if (extension is ".jpg" or ".jpeg" && attachmentBytes.Length > 4 && attachmentBytes[0] == 255 && attachmentBytes[1] == 216 && attachmentBytes[2] == 255 && attachmentBytes[^2] == 255 && attachmentBytes[^1] == 217) contentType = "image/jpeg";
+            if (extension == ".png" && attachmentBytes.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) contentType = "image/png";
+            if (contentType == null)
+                throw new AppFault(400, "Định dạng hoặc nội dung tệp không hợp lệ. Chỉ nhận PDF, JPEG, PNG.");
+            storageKey = Guid.NewGuid().ToString("N");
+            request.AttachmentStorageKey = storageKey;
+            request.AttachmentFileName = Path.GetFileName(attachmentFileName);
+            if (request.AttachmentFileName.Length > 255) request.AttachmentFileName = "tep-dinh-kem" + extension;
+            request.AttachmentContentType = contentType;
+            request.AttachmentSizeBytes = attachmentBytes.Length;
+            request.AttachmentHash = SHA256.HashData(attachmentBytes);
+        }
+        request.Activities.Add(new Models.Activity { ActivityType = "REQUEST_EVENT", ActorUserId = userId, EventCode = "SUBMITTED", ToStatus = "PENDING", OccurredAt = now });
         feedback.Add(request);
-        await unitOfWork.SaveChangesAsync();
-        feedback.AddActivity(new Models.Activity { ActivityType = "REQUEST_EVENT", RequestId = request.Id, ActorUserId = userId, EventCode = "SUBMITTED", ToStatus = "PENDING", OccurredAt = now });
-        await unitOfWork.SaveChangesAsync();
+        try
+        {
+            if (attachmentBytes != null && storageKey != null)
+                await storage.SaveAsync(storageKey, attachmentBytes);
+            await unitOfWork.SaveChangesAsync();
+        }
+        catch
+        {
+            if (storageKey != null) storage.Delete(storageKey);
+            throw;
+        }
         await notifier.ToStaffAsync(groupId, request.Id, "Có góp ý mới cần tiếp nhận.");
         return request.Id;
     }
@@ -128,5 +166,24 @@ public sealed class FeedbackService(
         await unitOfWork.SaveChangesAsync();
         await notifier.ToUserAsync(item.SubmittedByUserId, id, "Góp ý có cập nhật mới.");
         await notifier.ToStaffAsync(item.AssignedGroupId, id, "Góp ý có cập nhật mới.");
+    }
+
+    public async Task<DocumentDownload?> DownloadAttachmentAsync(ClaimsPrincipal actor, long id)
+    {
+        var userId = checker.UserId(actor);
+        var groups = await permissions.GetGroupIdsAsync(userId, "feedback.read");
+        var request = groups.Count != 0 ? await feedback.FindFeedbackInGroupsAsync(id, groups) : null;
+        if (request == null && await permissions.HasAnyAsync(userId, "feedback.self.read"))
+            request = await feedback.FindFeedbackBySubmitterAsync(id, userId);
+        if (request == null)
+            return null;
+        if (request.AttachmentStorageKey == null || !Guid.TryParseExact(request.AttachmentStorageKey, "N", out _))
+            return null;
+        var bytes = await storage.ReadAsync(request.AttachmentStorageKey);
+        if (bytes == null)
+            return null;
+        if (request.AttachmentHash == null || !CryptographicOperations.FixedTimeEquals(request.AttachmentHash, SHA256.HashData(bytes)))
+            throw new AppFault(409, "Tệp đính kèm không khớp dữ liệu đã lưu. Vui lòng liên hệ quản trị viên.");
+        return new DocumentDownload(bytes, request.AttachmentContentType ?? "application/octet-stream", request.AttachmentFileName ?? "tep-dinh-kem");
     }
 }

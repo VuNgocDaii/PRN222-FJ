@@ -37,13 +37,17 @@
     @if (Model.Access.Contains(feedback ? "feedback.self.create" : "residence_requests.self.create"))
     {
         <section class="panel"><h2>@(feedback ? "Gửi phản ánh mới" : "Gửi yêu cầu cư trú")</h2><p class="muted small">@(feedback ? "Nội dung được gửi riêng đến cán bộ phụ trách thôn." : "Yêu cầu áp dụng cho hồ sơ cư dân của bạn và cần ban quản lý phê duyệt.")</p>
-        <form action="/Resident/requests" method="post" asp-antiforgery="true" id="resident-request-form">
+        <form action="/Resident/requests" method="post" asp-antiforgery="true" id="resident-request-form" enctype="multipart/form-data">
             <input asp-for="Input.Kind" type="hidden"><input asp-for="Input.ClientKey" type="hidden">
             <div class="info-grid"><label>@(feedback ? "Lĩnh vực phản ánh" : "Loại yêu cầu")<select asp-for="Input.Type" id="request-type">@foreach (var type in feedback ? new[] { "ENVIRONMENT", "INFRASTRUCTURE", "OTHER" } : new[] { "TEMPORARY_ABSENCE", "TEMPORARY_RESIDENCE", "MOVE_IN", "MOVE_OUT", "ADD_MEMBER", "CHANGE_HEAD" }) { <option value="@type">@PortalLabels.Text(type)</option> }</select></label>
             @if (household == null && Model.Groups.Count == 1) { <input type="hidden" asp-for="Input.GroupId" value="@Model.Groups[0].Id"> } else if (household == null) { <label>Thôn tiếp nhận<select asp-for="Input.GroupId" required><option value="">Chọn thôn</option>@foreach (var group in Model.Groups) { <option value="@group.Id">@group.Name</option> }</select></label> }
             </div>
             <label>Tiêu đề<input asp-for="Input.Subject" required minlength="3" maxlength="250" placeholder="Tóm tắt nội dung cần giải quyết"></label>
             <label>Nội dung<textarea asp-for="Input.Body" required minlength="5" maxlength="4000" rows="5" placeholder="Mô tả cụ thể để cán bộ có thể hỗ trợ bạn"></textarea></label>
+            @if (feedback)
+            {
+                <label>Tệp đính kèm (không bắt buộc)<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png"><span class="muted small">Tối đa 5 MB; chấp nhận PDF, JPEG hoặc PNG.</span></label>
+            }
             @if (!feedback)
             {
                 <div class="info-grid"><label>Ngày bắt đầu<input asp-for="Input.StartDate" type="date" required></label><label>Ngày kết thúc (nếu có)<input asp-for="Input.EndDate" type="date"></label></div>

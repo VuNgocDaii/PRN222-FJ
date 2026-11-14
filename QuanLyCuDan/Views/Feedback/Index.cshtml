@@ -20,11 +20,12 @@
                 <section class="card shadow-sm"><div class="card-body">
                     <h2 class="h5">Gửi phản ánh, kiến nghị</h2>
                     <p class="text-muted small">Các trường có dấu <span class="text-danger">*</span> là bắt buộc. Nội dung chỉ bạn và cán bộ được phân quyền xem.</p>
-                    <form asp-controller="Feedback" asp-action="Create" method="post">
+                    <form asp-controller="Feedback" asp-action="Create" method="post" enctype="multipart/form-data">
                         @Html.AntiForgeryToken()
                         <label class="form-label" for="subject">Tiêu đề <span class="text-danger">*</span></label><input class="form-control mb-3" id="subject" name="subject" maxlength="200" minlength="3" placeholder="Tóm tắt nội dung phản ánh" required />
                         <label class="form-label" for="category">Lĩnh vực <span class="text-danger">*</span></label><select class="form-select mb-3" id="category" name="category"><option value="ENVIRONMENT">Môi trường</option><option value="INFRASTRUCTURE">Hạ tầng</option><option value="OTHER">Khác</option></select>
                         <label class="form-label" for="body">Nội dung phản ánh <span class="text-danger">*</span></label><textarea class="form-control mb-3" id="body" name="body" rows="7" maxlength="4000" minlength="5" placeholder="Mô tả sự việc, địa điểm và đề xuất của bạn" required></textarea>
+                        <label class="form-label" for="file">Tệp đính kèm (không bắt buộc)</label><input class="form-control mb-3" id="file" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png" /><div class="form-text mb-3">Tối đa 5 MB; chấp nhận PDF, JPEG hoặc PNG.</div>
                         <button class="btn btn-primary px-4" type="submit">Gửi phản ánh</button>
                     </form>
                 </div></section>
@@ -52,6 +53,10 @@
                         <h2 class="h5">@selected.Subject</h2><p class="text-muted small">Mã phản ánh: @selected.Code · @CategoryName(selected.Category) · @(selected.Status switch { "PENDING" => "Chờ tiếp nhận", "PROCESSING" => "Đang xử lý", "RESPONDED" => "Đã phản hồi", "CLOSED" => "Đã đóng", "OUT_OF_SCOPE" => "Ngoài phạm vi", _ => selected.Status })</p>
                         @if (Model.CanManage) { <p class="small">Người gửi: @selected.ResidentName</p> }
                         <div class="border rounded p-3 mb-3 bg-light">@selected.Body</div>
+                        @if (selected.CanDownloadAttachment)
+                        {
+                            <p><a class="btn btn-outline-secondary btn-sm" href="/Feedback/@selected.Id/attachment" target="_blank" rel="noopener">Xem tệp đính kèm: @selected.AttachmentFileName</a></p>
+                        }
                         <div id="feedback-thread" class="vstack gap-2 mb-3" aria-live="polite">
                             @foreach (var message in selected.Messages)
                             {

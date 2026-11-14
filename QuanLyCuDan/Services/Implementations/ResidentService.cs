@@ -115,7 +115,7 @@ public sealed class ResidentService(
         await unitOfWork.SaveChangesAsync();
     }
 
-    public async Task<long> CreateRequestAsync(ClaimsPrincipal actor, ResidentRequestInput input)
+    public async Task<long> CreateRequestAsync(ClaimsPrincipal actor, ResidentRequestInput input, Stream? attachment, long attachmentLength, string attachmentFileName)
     {
         var feedback = input.Kind == "FEEDBACK";
         if (!feedback)
@@ -180,13 +180,52 @@ public sealed class ResidentService(
             TargetHouseholdId = targetId, NewHeadResidentId = feedback ? null : input.NewHeadResidentId,
             Status = "PENDING", ClientRequestKey = input.ClientKey, SubmittedAt = DateTime.UtcNow
         };
+        byte[]? attachmentBytes = null;
+        string? storageKey = null;
+        if (attachment != null)
+        {
+            if (!feedback)
+                throw new AppFault(400, "Chỉ phản ánh mới được gửi tệp đính kèm.");
+            if (attachmentLength is < 1 or > 5242880)
+                throw new AppFault(400, "Tệp đính kèm phải có dung lượng tối đa 5 MB.");
+            using var memory = new MemoryStream();
+            await attachment.CopyToAsync(memory);
+            attachmentBytes = memory.ToArray();
+            if (attachmentBytes.Length is < 1 or > 5242880)
+                throw new AppFault(400, "Tệp đính kèm phải có dung lượng tối đa 5 MB.");
+            var extension = Path.GetExtension(attachmentFileName).ToLowerInvariant();
+            string? mime = null;
+            if (extension == ".pdf" && attachmentBytes.AsSpan().StartsWith("%PDF-"u8)) mime = "application/pdf";
+            if (extension is ".jpg" or ".jpeg" && attachmentBytes.Length > 4 && attachmentBytes[0] == 255 && attachmentBytes[1] == 216 && attachmentBytes[2] == 255 && attachmentBytes[^2] == 255 && attachmentBytes[^1] == 217) mime = "image/jpeg";
+            if (extension == ".png" && attachmentBytes.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) mime = "image/png";
+            if (mime == null)
+                throw new AppFault(400, "Định dạng hoặc nội dung tệp không hợp lệ. Chỉ nhận PDF, JPEG, PNG.");
+            storageKey = Guid.NewGuid().ToString("N");
+            request.AttachmentStorageKey = storageKey;
+            request.AttachmentFileName = Path.GetFileName(attachmentFileName);
+            if (request.AttachmentFileName.Length > 255) request.AttachmentFileName = "tep-dinh-kem" + extension;
+            request.AttachmentContentType = mime;
+            request.AttachmentSizeBytes = attachmentBytes.Length;
+            request.AttachmentHash = SHA256.HashData(attachmentBytes);
+            request.Activities.Add(new Models.Activity { ActivityType = "REQUEST_EVENT", ActorUserId = account.Id, EventCode = "ATTACHMENT_UPLOADED", OccurredAt = DateTime.UtcNow });
+        }
         request.Activities.Add(new Models.Activity
         {
             ActivityType = "REQUEST_EVENT", ActorUserId = account.Id, EventCode = "SUBMITTED", ToStatus = "PENDING",
             OccurredAt = DateTime.UtcNow, SafeMetadata = "{\"payloadHash\":\"" + hash + "\"}"
         });
         residents.Add(request);
-        await unitOfWork.SaveChangesAsync();
+        try
+        {
+            if (attachmentBytes != null && storageKey != null)
+                await storage.SaveAsync(storageKey, attachmentBytes);
+            await unitOfWork.SaveChangesAsync();
+        }
+        catch
+        {
+            if (storageKey != null) storage.Delete(storageKey);
+            throw;
+        }
         await transaction.CommitAsync();
         return request.Id;
     }

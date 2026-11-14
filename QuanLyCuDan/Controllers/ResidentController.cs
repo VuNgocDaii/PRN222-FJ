@@ -31,14 +31,14 @@ public sealed class ResidentController(IResidentService service, INavigationServ
         catch (DbUpdateConcurrencyException) { TempData["Error"] = "Thông tin đã thay đổi. Hãy tải lại và thử lại."; }
         return RedirectToAction(nameof(Index), new { section = "profile" });
     }
-    [HttpPost("requests"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind(Prefix = "Input")] ResidentRequestInput input)
+    [HttpPost("requests"), ValidateAntiForgeryToken, RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<IActionResult> Create([Bind(Prefix = "Input")] ResidentRequestInput input, IFormFile? file)
     {
         var feedback = input.Kind == "FEEDBACK";
         await service.Check(User, feedback ? "feedback.self.create" : "residence_requests.self.create");
         if (ModelState.IsValid)
         {
-            try { var id = await service.CreateRequestAsync(User, input); TempData["Success"] = "Đã gửi yêu cầu. Bạn có thể theo dõi tiến độ tại đây."; return RedirectToAction(nameof(Detail), new { id }); }
+            try { using var stream = file?.OpenReadStream(); var id = await service.CreateRequestAsync(User, input, stream, file?.Length ?? 0, file?.FileName ?? ""); TempData["Success"] = "Đã gửi yêu cầu. Bạn có thể theo dõi tiến độ tại đây."; return RedirectToAction(nameof(Detail), new { id }); }
             catch (AppFault error) when (error.Status is 400 or 409) { ModelState.AddModelError("", error.Message); }
         }
         var model = await service.GetPortalAsync(User, feedback ? "feedback" : "requests"); model.Input = input;
