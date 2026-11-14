@@ -1,6 +1,6 @@
 ﻿@model AnnouncementListViewModel
 @{ Layout = "_ManagementLayout"; ViewData["Title"] = "Quản lý thông báo"; var filters = new Dictionary<string,string> { ["ALL"]="Tất cả", ["DRAFT"]="Nháp", ["PENDING"]="Chờ duyệt", ["APPROVED"]="Đã duyệt, chưa đăng", ["REJECTED"]="Bị từ chối", ["PUBLISHED"]="Đã đăng", ["UNPUBLISHED"]="Đã gỡ" }; }
-<header class="page-header"><div><p class="eyebrow">THÔNG TIN CỘNG ĐỒNG</p><h1>Quản lý thông báo</h1><p class="muted">Soạn nội dung, xét duyệt và công bố cho đúng thôn.</p></div>@if (Model.CanCreate) { <a class="announcement-button primary" href="/Announcements/Create">+ Soạn thông báo</a> }</header>
+<header class="page-header"><div><p class="eyebrow">THÔNG TIN CỘNG ĐỒNG</p><h1>Quản lý thông báo</h1></div>@if (Model.CanCreate) { <a class="announcement-button primary" href="/Announcements/Create">+ Soạn thông báo</a> }</header>
 <form method="get" class="panel announcement-filter">
     <label>Tìm kiếm<input name="search" value="@Model.Search" maxlength="200" placeholder="Tiêu đề hoặc nội dung"></label>
     <label style="@(Model.Groups.Count <= 1 ? "display:none" : "")">Thôn<select name="groupId"><option value="">Tất cả địa bàn được cấp quyền</option>@foreach (var g in Model.Groups) { <option value="@g.Id" selected="@(Model.GroupId == g.Id)">@g.Name</option> }</select></label>

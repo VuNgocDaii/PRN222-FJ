@@ -3,7 +3,7 @@
     Layout = "_ManagementLayout";
     ViewData["Title"] = "Duyệt đăng ký";
 }
-<header class="page-header"><div><h1>Duyệt đăng ký cư dân</h1><p class="muted">Đối chiếu thông tin đăng ký với hồ sơ cư dân trước khi cấp quyền truy cập.</p></div></header>
+<header class="page-header"><div><h1>Duyệt đăng ký cư dân</h1></div></header>
 <nav class="status-tabs" aria-label="Trạng thái đăng ký">
     <a asp-action="Index" asp-route-status="PENDING" class="@(Model.Status == "PENDING" ? "active" : "")" aria-current="@(Model.Status == "PENDING" ? "page" : null)">Chờ duyệt</a>
     <a asp-action="Index" asp-route-status="APPROVED" class="@(Model.Status == "APPROVED" ? "active" : "")" aria-current="@(Model.Status == "APPROVED" ? "page" : null)">Đã duyệt</a>
@@ -67,7 +67,7 @@
                 <dt>Địa chỉ</dt><dd>@profile.Address</dd>
                 <dt>Thôn</dt><dd>@(Model.Groups.FirstOrDefault(g => g.Id == profile.GroupId)?.Name ?? "Tổ không còn hoạt động")</dd>
                 <dt>Cư trú</dt><dd>@PortalLabels.Text(profile.ResidenceStatus)</dd>
-            </dl><p class="muted small">Thông tin do người đăng ký cung cấp, cần đối chiếu trước khi tạo hồ sơ chính thức.</p></section>
+            </dl></section>
         }
         @if (user.VerificationStatus == "PENDING" || user.VerificationStatus == "APPROVED" && user.ResidentId == null)
         {
@@ -99,11 +99,9 @@
                         @if (rows.Any(r => !r.Same)) { <p class="message error" role="alert">Có thông tin không khớp. Hãy hỏi lại người đăng ký hoặc Trưởng thôn trước khi duyệt.</p> }
                         else { <p class="message success">Tất cả thông tin đối chiếu đều khớp.</p> }
                     </section>
-                    <p class="muted small">Khi duyệt, hệ thống liên kết hồ sơ và tự cấp quyền cư dân.</p>
                 }
                 else
                 {
-                    <p class="message error" role="alert">Không có hồ sơ cư dân nào của thôn trùng CCCD này (hoặc hồ sơ đã gắn tài khoản khác). Nếu vẫn duyệt, tài khoản chỉ có quyền cơ bản, không xem được dữ liệu cư dân. Hãy nhờ cán bộ tạo hồ sơ trước.</p>
                 }
                 <div class="inline">
                     <button type="submit" class="primary" disabled="@(matched == null && user.VerificationStatus == "APPROVED")">@(user.VerificationStatus == "APPROVED" ? "Xác nhận liên kết" : "Duyệt đăng ký")</button>

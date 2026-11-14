@@ -19,7 +19,6 @@
             <div class="col-lg-4">
                 <section class="card shadow-sm"><div class="card-body">
                     <h2 class="h5">Gửi phản ánh, kiến nghị</h2>
-                    <p class="text-muted small">Các trường có dấu <span class="text-danger">*</span> là bắt buộc. Nội dung chỉ bạn và cán bộ được phân quyền xem.</p>
                     <form asp-controller="Feedback" asp-action="Create" method="post">
                         @Html.AntiForgeryToken()
                         <label class="form-label" for="subject">Tiêu đề <span class="text-danger">*</span></label><input class="form-control mb-3" id="subject" name="subject" maxlength="200" minlength="3" placeholder="Tóm tắt nội dung phản ánh" required />
@@ -34,7 +33,6 @@
             <div class="row g-3">
                 <div class="col-md-5"><section class="card shadow-sm"><div class="card-body">
                     <h2 class="h5">@(Model.CanManage ? "Phản ánh được giao" : "Phản ánh của tôi")</h2>
-                    <p class="text-muted small">Theo dõi tình trạng tiếp nhận và nội dung phản hồi.</p>
                     @if (Model.Items.Count == 0) { <p class="text-muted mb-0">Chưa có phản ánh nào.</p> }
                     <div class="list-group">
                     @foreach (var item in Model.Items)

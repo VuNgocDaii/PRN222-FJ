@@ -11,7 +11,6 @@
 <div class="announcement-detail-grid"><section class="panel"><h2>Trạng thái xử lý</h2><dl class="announcement-metadata"><dt>Gửi duyệt</dt><dd>@(a.SubmittedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Chưa gửi")</dd><dt>Ngày duyệt</dt><dd>@(a.ReviewedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Chưa xét duyệt")</dd><dt>Đăng lúc</dt><dd>@(a.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng")</dd><dt>Người đăng</dt><dd>@(a.PublishedByUser?.FullName ?? "Chưa đăng")</dd><dt>Hết hạn</dt><dd>@(a.ExpiresAt?.AddHours(7).ToString("dd/MM/yyyy HH:mm") ?? "Không giới hạn")</dd></dl>
 @if (!string.IsNullOrEmpty(a.ReviewNote)) { <h3>Ý kiến xét duyệt</h3><p class="announcement-prose">@a.ReviewNote</p> }
 @if (!string.IsNullOrEmpty(a.UnpublishReason)) { <h3>Lý do gỡ</h3><p class="announcement-prose">@a.UnpublishReason</p> }
-<p class="muted small">Các thời điểm hiển thị theo giờ Việt Nam.</p>
 </section><section class="panel"><h2>Thao tác</h2><div class="announcement-actions">
 @if (Model.CanEdit) { <a href="/Announcements/@a.Id/Edit" class="announcement-button secondary">Chỉnh sửa nội dung</a> }
 @if (Model.CanSubmit) { <form asp-action="Submit" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><button type="submit" class="primary">@(Model.PublishesOnSubmit ? "Đăng thông báo" : "Gửi duyệt")</button></form> }

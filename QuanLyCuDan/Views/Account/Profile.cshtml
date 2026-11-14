@@ -6,7 +6,7 @@
 <div id="notice" hidden role="status"></div>
 @if (ViewData["CanSubmitResidentProfile"] is true)
 {
-    <section class="panel narrow"><h2>Bạn chưa có hồ sơ cư dân</h2><p class="muted">Bổ sung ngày sinh, địa chỉ và thông tin cư trú để quản trị viên xác minh, tạo hồ sơ và cấp quyền cư dân.</p><a class="primary nav-item" href="/Account/ResidentRegistration">Bổ sung thông tin cư dân</a></section>
+    <section class="panel narrow"><h2>Bạn chưa có hồ sơ cư dân</h2><a class="primary nav-item" href="/Account/ResidentRegistration">Bổ sung thông tin cư dân</a></section>
 }
 <section class="panel narrow">
     <h2>Đổi mật khẩu</h2>
@@ -16,5 +16,4 @@
         <label>Xác nhận mật khẩu mới<input name="confirmPassword" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
         <button class="primary">Đổi mật khẩu</button>
     </form>
-    <p class="muted small">Sau khi đổi mật khẩu thành công, bạn cần đăng nhập lại trên các thiết bị.</p>
 </section>

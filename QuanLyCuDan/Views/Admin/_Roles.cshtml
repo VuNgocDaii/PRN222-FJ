@@ -16,11 +16,10 @@
     <form id="role-details" asp-controller="Roles" asp-action="Update" asp-route-id="@role.Id" method="post" class="form-grid"><input name="returnUrl" type="hidden" value="@returnUrl"><input name="ConcurrencyStamp" type="hidden" value="@role.ConcurrencyStamp">
         <label>Tên hiển thị<input name="DisplayName" value="@role.DisplayName" required maxlength="150" readonly="@readOnly"></label><label>Mô tả<input name="Description" value="@role.Description" maxlength="500" readonly="@readOnly"></label><label class="check"><input name="IsActive" type="checkbox" value="true" checked="@role.IsActive" disabled="@readOnly">Đang hoạt động</label><input name="IsActive" type="hidden" value="false"><button class="secondary" disabled="@(readOnly || !access.Contains("roles.update"))">Lưu thông tin</button>
     </form>
-    <p id="role-note" class="muted small">Cập nhật thông tin và trạng thái của vai trò.</p>
     } else { <p class="empty">Chưa có vai trò.</p> }
 </div>
 @if (role != null && access.Contains("permissions.read")) {
-<div id="permission-assignment-panel" class="panel"><h2>Quyền của vai trò</h2><p id="permission-note" class="muted small">Các quyền được chọn phải có phạm vi tương thích với các lần gán vai trò.</p>
+<div id="permission-assignment-panel" class="panel"><h2>Quyền của vai trò</h2>
     <form id="role-permissions" asp-controller="Roles" asp-action="Permissions" asp-route-id="@role.Id" method="post"><input name="returnUrl" type="hidden" value="@returnUrl"><input name="ConcurrencyStamp" type="hidden" value="@role.ConcurrencyStamp"><div id="permission-list" class="permission-grid">
     @foreach (var permission in Model.Permissions) { <label><input name="PermissionIds" type="checkbox" value="@permission.Id" checked="@role.Permissions.Any(p => p.Id == permission.Id)" disabled="@(readOnly || !access.Contains("roles.permissions.update"))"><span>@permission.Name<small>@permission.Code · @permission.Module</small></span></label> }
     </div><button class="primary" disabled="@(readOnly || !access.Contains("roles.permissions.update"))">Lưu danh sách quyền</button></form>

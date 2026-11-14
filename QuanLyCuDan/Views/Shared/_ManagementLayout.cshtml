@@ -61,7 +61,6 @@
             <h2 id="password-dialog-title">Thay đổi mật khẩu</h2>
             <button type="button" class="secondary" id="close-password-dialog" aria-label="Đóng">Đóng</button>
         </div>
-        <p class="muted small">Bạn cần đăng nhập lại sau khi đổi mật khẩu.</p>
         <p id="password-notice" class="message error" role="alert" hidden></p>
         <form id="change-password-form" asp-controller="Account" asp-action="ChangePassword" method="post">
             <label>Mật khẩu hiện tại<input name="currentPassword" type="password" autocomplete="current-password" required autofocus></label>

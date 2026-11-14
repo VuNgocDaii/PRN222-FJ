@@ -1,7 +1,7 @@
 ﻿@model QuanLyCuDan.Auth.RegisterInput
 @{ Layout = "_AccountLayout"; ViewData["Title"] = "Đăng ký cư dân"; ViewData["WideAccount"] = true; var groups = ViewData["RegistrationGroups"] as List<ResidentialUnit> ?? new(); }
 <h1>Đăng ký cư dân</h1>
-<p class="muted">Điền thông tin cá nhân và nơi cư trú để ban quản lý xác minh. Hồ sơ và quyền cư dân được cấp sau khi phê duyệt.</p>
+
 <form asp-controller="Account" asp-action="Register" method="post">
     <div asp-validation-summary="All" class="validation" role="alert"></div>
     <h2>Thông tin cư dân</h2>

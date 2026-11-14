@@ -13,7 +13,7 @@
                 @if (selected != null && !Model.Users.Any(u => u.Id == selected.Id)) { <option value="@selected.Id" selected>@selected.UserName — @selected.FullName</option> }
                 @foreach (var account in Model.Users) { <option value="@account.Id" selected="@(account.Id == selected?.Id)">@account.UserName — @account.FullName</option> }
             </select></label><button class="secondary" data-auto-submit-button>Xem vai trò</button>
-        </form><p class="muted small">Tìm tài khoản trong danh sách để gán vai trò.</p>
+        </form>
     </div>
     @if (selected != null && selected.Id != currentId && selected.IsActive) {
     <div class="panel"><h2>Gán vai trò</h2><p>Mỗi tài khoản một vai trò. Thu hồi vai trò hiện tại trước khi gán vai trò khác.</p>

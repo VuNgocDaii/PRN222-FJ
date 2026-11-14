@@ -36,7 +36,7 @@
     var feedback = Model.Section == "feedback";
     @if (Model.Access.Contains(feedback ? "feedback.self.create" : "residence_requests.self.create"))
     {
-        <section class="panel"><h2>@(feedback ? "Gửi phản ánh mới" : "Gửi yêu cầu cư trú")</h2><p class="muted small">@(feedback ? "Nội dung được gửi riêng đến cán bộ phụ trách thôn." : "Yêu cầu áp dụng cho hồ sơ cư dân của bạn và cần ban quản lý phê duyệt.")</p>
+        <section class="panel"><h2>@(feedback ? "Gửi phản ánh mới" : "Gửi yêu cầu cư trú")</h2>
         <form action="/Resident/requests" method="post" asp-antiforgery="true" id="resident-request-form">
             <input asp-for="Input.Kind" type="hidden"><input asp-for="Input.ClientKey" type="hidden">
             <div class="info-grid"><label>@(feedback ? "Lĩnh vực phản ánh" : "Loại yêu cầu")<select asp-for="Input.Type" id="request-type">@foreach (var type in feedback ? new[] { "ENVIRONMENT", "INFRASTRUCTURE", "OTHER" } : new[] { "TEMPORARY_ABSENCE", "TEMPORARY_RESIDENCE", "MOVE_IN", "MOVE_OUT", "ADD_MEMBER", "CHANGE_HEAD" }) { <option value="@type">@PortalLabels.Text(type)</option> }</select></label>
@@ -65,7 +65,6 @@
     {
         var due = Model.Payments.Where(p => !p.IsPaid && !p.IsCancelled).Sum(p => p.AmountDue);
         <div class="fee-summary"><div><span>Cần đóng</span><strong>@due.ToString("N0") đ</strong></div><div><span>Đã đóng</span><strong>@Model.Payments.Where(p => p.IsPaid).Sum(p => p.PaidAmount ?? 0).ToString("N0") đ</strong></div></div>
-        <p class="muted">Vui lòng liên hệ cán bộ thu phí để đóng tiền. Kết quả được cập nhật sau khi cán bộ xác nhận thu.</p>
         @if (Model.Payments.Count == 0) { <div class="empty-state"><h2>Chưa có khoản thu được giao cho hộ</h2></div> }
         @foreach (var payment in Model.Payments)
         {
