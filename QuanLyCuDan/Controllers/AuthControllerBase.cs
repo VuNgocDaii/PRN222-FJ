@@ -1,12 +1,13 @@
+using QuanLyCuDan.Services.Interfaces;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using QuanLyCuDan.Models;
 using QuanLyCuDan.Services;
 namespace QuanLyCuDan.Controllers;
 
-public abstract class AuthControllerBase(AuthService authentication, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public abstract class AuthControllerBase(IAuthService authentication, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
-    protected AuthService Authentication { get; } = authentication;
+    protected IAuthService Authentication { get; } = authentication;
 
     protected async Task SignInCore(HttpContext http, AspNetUser user, UserSession session)
     {

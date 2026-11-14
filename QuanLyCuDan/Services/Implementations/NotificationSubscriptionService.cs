@@ -1,25 +1,21 @@
-using QuanLyCuDan.Hubs;
-using System.Data;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using QuanLyCuDan.Auth;
-using QuanLyCuDan.Models;
-namespace QuanLyCuDan.Services;
+using QuanLyCuDan.Hubs;
+using QuanLyCuDan.Repositories.Interfaces;
+using QuanLyCuDan.Services.Interfaces;
 
-public sealed class NotificationSubscriptionService(MyStockContext context) : ApplicationService(context)
+namespace QuanLyCuDan.Services.Implementations;
+
+public sealed class NotificationSubscriptionService(IPermissionChecker checker, IPermissionRepository permissions, IResidentialUnitRepository units) : INotificationSubscriptionService
 {
     public async Task<IReadOnlyList<string>> GetGroupsAsync(ClaimsPrincipal actor)
     {
-        var userId = actor.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var userId = checker.UserId(actor);
         var result = new List<string> { NotificationHub.FeedbackUserGroup(userId) };
-        var grants = await db.VwEffectivePermissions.AsNoTracking()
-            .Where(x => x.UserId == userId && x.PermissionCode == "feedback.read")
-            .Select(x => new { x.ScopeType, x.ResidentialGroupId, x.ResidentialAreaId }).ToListAsync();
+        var grants = await permissions.GetGrantsAsync(userId, "feedback.read");
         foreach (var grant in grants.Where(x => x.ScopeType == "GROUP" && x.ResidentialGroupId != null))
             result.Add(NotificationHub.FeedbackStaffGroup(grant.ResidentialGroupId!.Value));
         var areas = grants.Where(x => x.ScopeType == "AREA" && x.ResidentialAreaId != null).Select(x => x.ResidentialAreaId!.Value).Distinct().ToList();
-        var groupIds = await db.ResidentialUnits.AsNoTracking().Where(x => x.IsActive && x.ParentUnitId != null && areas.Contains(x.ParentUnitId.Value)).Select(x => x.Id).ToListAsync();
-        foreach (var groupId in groupIds)
+        foreach (var groupId in await units.GetActiveGroupIdsUnderAreasAsync(areas))
             result.Add(NotificationHub.FeedbackStaffGroup(groupId));
         return result.Distinct().ToArray();
     }

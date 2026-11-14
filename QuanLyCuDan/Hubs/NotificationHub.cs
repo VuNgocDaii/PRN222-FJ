@@ -1,9 +1,10 @@
+using QuanLyCuDan.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using QuanLyCuDan.Services;
 namespace QuanLyCuDan.Hubs;
 [Authorize(AuthenticationSchemes = "Cookies")]
-public class NotificationHub(SessionService sessions, NotificationSubscriptionService subscriptions) : Hub
+public class NotificationHub(ISessionService sessions, INotificationSubscriptionService subscriptions) : Hub
 {
     public static string FeedbackUserGroup(string userId) => $"feedback:user:{userId}";
     public static string FeedbackStaffGroup(long groupId) => $"feedback:staff:{groupId}";

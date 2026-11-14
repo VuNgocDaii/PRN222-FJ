@@ -62,9 +62,10 @@
                 <dt>Ngày sinh</dt><dd>@profile.DateOfBirth?.ToString("dd/MM/yyyy")</dd>
                 <dt>Giới tính</dt><dd>@PortalLabels.Text(profile.Gender)</dd>
                 <dt>CCCD</dt><dd>@(profile.CitizenId ?? "Không cung cấp")</dd>
+                <dt>Chủ hộ</dt><dd>@(profile.HeadName ?? "Không cung cấp")</dd>
                 <dt>Nghề nghiệp</dt><dd>@(profile.Occupation ?? "Không cung cấp")</dd>
                 <dt>Địa chỉ</dt><dd>@profile.Address</dd>
-                <dt>Tổ dân phố</dt><dd>@(Model.Groups.FirstOrDefault(g => g.Id == profile.GroupId)?.Name ?? "Tổ không còn hoạt động")</dd>
+                <dt>Thôn</dt><dd>@(Model.Groups.FirstOrDefault(g => g.Id == profile.GroupId)?.Name ?? "Tổ không còn hoạt động")</dd>
                 <dt>Cư trú</dt><dd>@PortalLabels.Text(profile.ResidenceStatus)</dd>
             </dl><p class="muted small">Thông tin do người đăng ký cung cấp, cần đối chiếu trước khi tạo hồ sơ chính thức.</p></section>
         }
@@ -77,18 +78,32 @@
                 <input type="hidden" name="Approve" value="true">
                 @if (matched != null)
                 {
+                        string D(string? v) => new string((v ?? "").Where(char.IsDigit).ToArray());
+                        string T(string? v) => string.Join(' ', (v ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
+                        Model.HeadNames.TryGetValue(matched.Id, out var headName);
+                        var rows = new List<(string Label, string Declared, string Record, bool Same)>
+                        {
+                            ("Họ tên", user.FullName, matched.FullName, T(user.FullName) == T(matched.FullName)),
+                            ("Ngày sinh", profile?.DateOfBirth?.ToString("dd/MM/yyyy") ?? "—", matched.DateOfBirth.ToString("dd/MM/yyyy"), profile?.DateOfBirth?.ToString("dd/MM/yyyy") == matched.DateOfBirth.ToString("dd/MM/yyyy")),
+                            ("Giới tính", PortalLabels.Text(profile?.Gender ?? ""), PortalLabels.Text(matched.Gender), profile?.Gender == matched.Gender),
+                            ("Số điện thoại", user.PhoneNumber ?? "—", matched.PhoneNumber ?? "—", D(user.PhoneNumber) != "" && D(user.PhoneNumber) == D(matched.PhoneNumber)),
+                            ("Họ tên chủ hộ", profile?.HeadName ?? "—", headName ?? "—", headName != null && T(profile?.HeadName) == T(headName))
+                        };
                     <input type="hidden" name="ResidentId" value="@matched.Id">
                     <section class="registration-profile">
-                        <h3>Hồ sơ trùng CCCD</h3>
-                        <dl>
-                            <dt>Họ tên</dt><dd>@matched.FullName</dd>
-                            <dt>Ngày sinh</dt><dd>@matched.DateOfBirth.ToString("dd/MM/yyyy")</dd>
-                            <dt>Giới tính</dt><dd>@PortalLabels.Text(matched.Gender)</dd>
-                            <dt>CCCD</dt><dd>@matched.CitizenId</dd>
-                            <dt>Điện thoại</dt><dd>@matched.PhoneNumber</dd>
-                        </dl>
+                        <h3>Đối chiếu với hồ sơ của thôn (trùng CCCD @matched.CitizenId)</h3>
+                        <div class="table-scroll"><table>
+                            <thead><tr><th>Hạng mục</th><th>Người đăng ký khai</th><th>Hồ sơ của thôn</th><th>Kết quả</th></tr></thead>
+                            <tbody>@foreach (var row in rows) { <tr><td>@row.Label</td><td>@row.Declared</td><td>@row.Record</td><td>@(row.Same ? "✔ Khớp" : "⚠ Khác")</td></tr> }</tbody>
+                        </table></div>
+                        @if (rows.Any(r => !r.Same)) { <p class="message error" role="alert">Có thông tin không khớp. Hãy hỏi lại người đăng ký hoặc Trưởng thôn trước khi duyệt.</p> }
+                        else { <p class="message success">Tất cả thông tin đối chiếu đều khớp.</p> }
                     </section>
                     <p class="muted small">Khi duyệt, hệ thống liên kết hồ sơ và tự cấp quyền cư dân.</p>
+                }
+                else
+                {
+                    <p class="message error" role="alert">Không có hồ sơ cư dân nào của thôn trùng CCCD này (hoặc hồ sơ đã gắn tài khoản khác). Nếu vẫn duyệt, tài khoản chỉ có quyền cơ bản, không xem được dữ liệu cư dân. Hãy nhờ cán bộ tạo hồ sơ trước.</p>
                 }
                 <div class="inline">
                     <button type="submit" class="primary" disabled="@(matched == null && user.VerificationStatus == "APPROVED")">@(user.VerificationStatus == "APPROVED" ? "Xác nhận liên kết" : "Duyệt đăng ký")</button>

@@ -17,6 +17,6 @@
         <label>Nhập lại mật khẩu<input name="ConfirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
     </div>
     <button class="primary wide" type="submit" disabled="@(groups.Count == 0)">Gửi đăng ký chờ duyệt</button>
-    @if (groups.Count == 0) { <p class="validation">Chưa có tổ dân phố đang hoạt động để tiếp nhận đăng ký.</p> }
+    @if (groups.Count == 0) { <p class="validation">Chưa có thôn đang hoạt động để tiếp nhận đăng ký.</p> }
 </form>
 <p class="footnote">Đã có tài khoản? <a asp-controller="Account" asp-action="Login">Đăng nhập</a></p>

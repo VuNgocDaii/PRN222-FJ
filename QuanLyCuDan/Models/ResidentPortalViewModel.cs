@@ -68,7 +68,7 @@ public static class PortalLabels
         "MALE" => "Nam", "FEMALE" => "Nữ", "PUBLIC" => "Công khai", "RESIDENTS" => "Dành cho cư dân", "ORGANIZATION" => "Nội bộ tổ chức",
         "REQUIRED" => "Bắt buộc", "VOLUNTARY" => "Tự nguyện", "CASH" => "Tiền mặt", "TRANSFER" => "Chuyển khoản",
         "SUBMITTED" => "Đã gửi", "RESIDENT_CANCELLED" => "Cư dân hủy yêu cầu", "RESIDENT_MESSAGE" => "Trao đổi của cư dân",
-        "FEEDBACK_REPLIED" => "Phản ánh của bạn đã được trả lời", "ANNOUNCEMENT_PUBLISHED" => "Tổ dân phố có thông báo mới",
+        "FEEDBACK_REPLIED" => "Phản ánh của bạn đã được trả lời", "ANNOUNCEMENT_PUBLISHED" => "Thôn có thông báo mới",
         "PAYMENT_RECORDED" => "Khoản đóng tiền của hộ đã được ghi nhận", "REQUEST_APPROVED" => "Yêu cầu đã được duyệt",
         "REQUEST_REJECTED" => "Yêu cầu đã bị từ chối", "ATTACHMENT_UPLOADED" => "Đã bổ sung giấy tờ",
         _ => value

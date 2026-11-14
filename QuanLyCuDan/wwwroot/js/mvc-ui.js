@@ -12,6 +12,8 @@
                 option.disabled = option.hidden;
             }
             if (!needsUnit || unit.selectedOptions[0]?.disabled) unit.value = "";
+            const choices = [...unit.options].filter(o => o.value && !o.disabled);
+            if (needsUnit && !unit.value && choices.length === 1) unit.value = choices[0].value;
         }
         function updateRole() {
             const allowed = role.selectedOptions[0]?.dataset.scopes?.split(",").filter(Boolean) || [];

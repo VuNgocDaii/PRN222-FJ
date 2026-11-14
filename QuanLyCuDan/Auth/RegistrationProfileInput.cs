@@ -10,12 +10,14 @@ public class RegistrationProfileInput : IValidatableObject
     public DateOnly? DateOfBirth { get; set; }
     [Required, RegularExpression("^(MALE|FEMALE|OTHER)$", ErrorMessage = "Chọn giới tính hợp lệ.")]
     public string Gender { get; set; } = "";
-    [RegularExpression("^[0-9]{12}$", ErrorMessage = "CCCD gồm đúng 12 chữ số.")]
+    [Required(ErrorMessage = "Nhập số CCCD (12 chữ số)."), RegularExpression("^[0-9]{12}$", ErrorMessage = "CCCD gồm đúng 12 chữ số.")]
     public string? CitizenId { get; set; }
     [StringLength(150)] public string? Occupation { get; set; }
+    [Required(ErrorMessage = "Nhập họ tên chủ hộ để ban quản lý đối chiếu."), StringLength(150)]
+    public string? HeadName { get; set; }
     [Required(ErrorMessage = "Nhập địa chỉ cư trú."), StringLength(300)]
     public string Address { get; set; } = "";
-    [Required(ErrorMessage = "Chọn tổ dân phố."), Range(1, long.MaxValue)]
+    [Required(ErrorMessage = "Chọn thôn."), Range(1, long.MaxValue)]
     public long? GroupId { get; set; }
     [Required, RegularExpression("^(RESIDING|TEMPORARY)$")]
     public string ResidenceStatus { get; set; } = "RESIDING";

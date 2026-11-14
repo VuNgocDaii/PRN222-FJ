@@ -1,24 +1,27 @@
-using System.Data;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
-namespace QuanLyCuDan.Services;
+using QuanLyCuDan.Repositories.Interfaces;
+using QuanLyCuDan.Services.Interfaces;
 
-public sealed class AdminService(MyStockContext context) : ApplicationService(context)
+namespace QuanLyCuDan.Services.Implementations;
+
+public sealed class AdminService(
+    IPermissionChecker checker,
+    IPermissionRepository permissions,
+    IUserRepository users,
+    IRoleRepository roles,
+    IRoleAssignmentRepository assignments,
+    IPermissionCatalogRepository catalog) : IAdminService
 {
+    private const int PageSize = 30;
+
     public async Task<AdminPageResult> GetAsync(ClaimsPrincipal actor, string? tab, string? search, int page = 1, string? userId = null, string? roleId = null, int? permissionId = null)
     {
-        var management = new[]
-        {
-            "accounts.read",
-            "roles.read",
-            "roles.assign",
-            "permissions.read"
-        };
-        if (!await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(Effective(CurrentUserId(actor)), x => x.ScopeType == "SYSTEM" && management.Contains(x.PermissionCode)))
+        var me = checker.UserId(actor);
+        if (!await permissions.HasAnyCodeAsync(me, ["accounts.read", "roles.read", "roles.assign", "permissions.read"], "SYSTEM"))
             throw new AppFault(403, "Bạn không có quyền quản trị hệ thống.");
-        var access = (await Effective(CurrentUserId(actor)).Where(x => x.ScopeType == "SYSTEM").Select(x => x.PermissionCode).ToListAsync()).ToHashSet();
+        var access = await permissions.GetSystemCodesAsync(me);
         var available = new List<string>();
         if (access.Contains("accounts.read")) available.Add("users");
         if (access.Contains("roles.read")) available.Add("roles");
@@ -28,30 +31,29 @@ public sealed class AdminService(MyStockContext context) : ApplicationService(co
         model.CanAssign = access.Contains("accounts.read") && access.Contains("roles.read") && access.Contains("permissions.read") && access.Contains("roles.assign");
         if (model.Tab == "users")
         {
-            var query = db.AspNetUsers.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(model.Search)) query = query.Where(u => u.UserName.Contains(model.Search) || u.FullName.Contains(model.Search));
-            model.Total = await query.CountAsync();
-            model.Page = Math.Clamp(page, 1, Math.Max(1, (model.Total + 29) / 30));
-            model.Users = await query.OrderBy(u => u.UserName).Skip((model.Page - 1) * 30).Take(30).ToListAsync();
+            model.Total = await users.CountAsync(model.Search);
+            model.Page = Math.Clamp(page, 1, Math.Max(1, (model.Total + PageSize - 1) / PageSize));
+            model.Users = await users.ListPageAsync(model.Search, model.Page, PageSize);
             if (model.CanAssign)
             {
-                model.SelectedUser = userId == null ? model.Users.FirstOrDefault() : await db.AspNetUsers.AsNoTracking().SingleOrDefaultAsync(u => u.Id == userId);
-                model.Organizations = await db.Organizations.AsNoTracking().Where(o => o.IsActive).OrderBy(o => o.Name).ToListAsync();
-                model.Units = await db.ResidentialUnits.AsNoTracking().Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
-                if (model.SelectedUser != null) model.Assignments = await db.UserRoleAssignments.AsNoTracking().Include(a => a.Role)
-                    .Where(a => a.UserId == model.SelectedUser.Id).OrderByDescending(a => a.AssignedAt).Take(200).ToListAsync();
+                model.SelectedUser = userId == null ? model.Users.FirstOrDefault() : await users.FindNoTrackingAsync(userId);
+                model.Organizations = await assignments.ActiveOrganizationsAsync();
+                model.Units = await assignments.ActiveUnitsAsync();
+                if (model.SelectedUser != null)
+                    model.Assignments = await assignments.ListForUserAsync(model.SelectedUser.Id);
             }
         }
         if (model.Tab == "roles" || model.CanAssign && model.Tab == "users")
         {
-            model.Roles = await db.AspNetRoles.AsNoTracking().Include(r => r.Permissions).ThenInclude(p => p.PermissionAllowedScopes).OrderBy(r => r.Name).ToListAsync();
+            model.Roles = await roles.ListAllWithScopesAsync();
             model.SelectedRole = model.Roles.FirstOrDefault(r => r.Id == roleId) ?? model.Roles.FirstOrDefault();
-            model.OwnRoleIds = (await db.UserRoleAssignments.Where(a => a.UserId == CurrentUserId(actor) && a.RevokedAt == null && (a.ValidUntil == null || a.ValidUntil > DateTime.UtcNow)).Select(a => a.RoleId).ToListAsync()).ToHashSet();
+            model.OwnRoleIds = await assignments.OwnActiveRoleIdsAsync(me);
         }
         if (model.Tab == "permissions" || model.Tab == "roles" && access.Contains("permissions.read"))
         {
-            model.Permissions = await db.Permissions.AsNoTracking().Include(p => p.PermissionAllowedScopes).Include(p => p.Roles).AsSplitQuery().OrderBy(p => p.Module).ThenBy(p => p.Code).ToListAsync();
-            if (model.Tab == "permissions" && permissionId.HasValue && access.Contains("permissions.update")) model.EditingPermission = model.Permissions.FirstOrDefault(p => p.Id == permissionId);
+            model.Permissions = await catalog.ListSplitAsync();
+            if (model.Tab == "permissions" && permissionId.HasValue && access.Contains("permissions.update"))
+                model.EditingPermission = model.Permissions.FirstOrDefault(p => p.Id == permissionId);
         }
         return new(model, access);
     }

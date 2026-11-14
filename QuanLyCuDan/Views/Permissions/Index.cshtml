@@ -5,7 +5,7 @@
 <section class="panel crud-panel"><h2>Tạo quyền</h2><form asp-action="Create" method="post"><label>Mã quyền<input name="Code" required maxlength="100"></label><label>Tên quyền<input name="Name" required maxlength="200"></label><label>Phân hệ<input name="Module" required maxlength="50"></label><label>Mô tả<textarea name="Description" maxlength="500"></textarea></label><fieldset><legend>Phạm vi cho phép</legend>@foreach (var scope in scopes) { <label><input name="Scopes" type="checkbox" value="@scope"> @scope</label> }</fieldset><button class="primary">Tạo quyền</button></form></section>
 }
 @foreach (var item in Model) {
-    var version = QuanLyCuDan.Services.PermissionService.VersionOf(item);
+    var version = QuanLyCuDan.Services.Implementations.PermissionService.VersionOf(item);
 <section class="panel crud-panel"><h2>@item.Code</h2><p>@item.Name · @item.Module · @item.Roles.Count vai trò</p><p>@item.Description</p>
 @if (access.Contains("permissions.update")) {
 <form asp-action="Update" asp-route-id="@item.Id" method="post"><input name="Version" type="hidden" value="@version"><label>Tên quyền<input name="Name" value="@item.Name" required maxlength="200"></label><label>Phân hệ<input name="Module" value="@item.Module" required maxlength="50"></label><label>Mô tả<textarea name="Description" maxlength="500">@item.Description</textarea></label><fieldset><legend>Phạm vi cho phép</legend>@foreach (var scope in scopes) { <label><input name="Scopes" type="checkbox" value="@scope" checked="@item.PermissionAllowedScopes.Any(s => s.ScopeType == scope)"> @scope</label> }</fieldset><button class="primary">Lưu quyền</button></form>

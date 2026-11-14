@@ -4,13 +4,13 @@
     var editing = Model.EditingPermission;
     var returnUrl = Url.Action("Index", "Admin", new { tab = "permissions" });
     var scopes = new[] { "SYSTEM", "SELF", "AREA", "GROUP" };
-    string ScopeLabel(string scope) => scope switch { "SYSTEM" => "Toàn hệ thống", "SELF" => "Cá nhân", "AREA" => "Khu dân cư", _ => "Tổ dân phố" };
+    string ScopeLabel(string scope) => scope switch { "SYSTEM" => "Toàn hệ thống", "SELF" => "Cá nhân", "AREA" => "Xã", _ => "Thôn" };
 }
 @if (editing != null || access.Contains("permissions.create")) {
 <div id="permission-editor-panel" class="panel"><h2 id="permission-editor-title">@(editing == null ? "Thêm quyền" : "Sửa quyền")</h2>
     <form id="permission-editor" asp-controller="Permissions" asp-action="@(editing == null ? "Create" : "Update")" asp-route-id="@editing?.Id" method="post" class="form-grid">
         <input name="returnUrl" type="hidden" value="@returnUrl">
-        @if (editing != null) { <input name="Version" type="hidden" value="@QuanLyCuDan.Services.PermissionService.VersionOf(editing)"> }
+        @if (editing != null) { <input name="Version" type="hidden" value="@QuanLyCuDan.Services.Implementations.PermissionService.VersionOf(editing)"> }
         <label>Mã quyền<input name="Code" value="@editing?.Code" required maxlength="100" pattern="[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+" placeholder="VD: reports.export" readonly="@(editing != null)"></label>
         <label>Tên quyền<input name="Name" value="@editing?.Name" required maxlength="200"></label>
         <label>Nhóm<input name="Module" value="@editing?.Module" required maxlength="50" pattern="[A-Za-z0-9_-]+" placeholder="VD: REPORTS"></label>
@@ -26,7 +26,7 @@
 @foreach (var permission in Model.Permissions) {
     <tr><td>@permission.Code</td><td>@permission.Name</td><td>@permission.Module</td><td>@string.Join(", ", permission.PermissionAllowedScopes.Select(s => ScopeLabel(s.ScopeType)))</td><td>@permission.Roles.Count</td><td><div class="admin-row-actions">
     @if (access.Contains("permissions.update")) { <a class="secondary admin-button" asp-controller="Admin" asp-action="Index" asp-route-tab="permissions" asp-route-permissionId="@permission.Id" asp-fragment="permission-editor-panel">Sửa</a> }
-    @if (access.Contains("permissions.delete") && permission.Roles.Count == 0) { <form asp-controller="Permissions" asp-action="Delete" asp-route-id="@permission.Id" method="post" data-admin-confirm="Xóa quyền @permission.Code? Quyền chỉ được xóa khi không còn vai trò sử dụng."><input name="Version" type="hidden" value="@QuanLyCuDan.Services.PermissionService.VersionOf(permission)"><input name="returnUrl" type="hidden" value="@returnUrl"><button class="danger">Xóa</button></form> }
+    @if (access.Contains("permissions.delete") && permission.Roles.Count == 0) { <form asp-controller="Permissions" asp-action="Delete" asp-route-id="@permission.Id" method="post" data-admin-confirm="Xóa quyền @permission.Code? Quyền chỉ được xóa khi không còn vai trò sử dụng."><input name="Version" type="hidden" value="@QuanLyCuDan.Services.Implementations.PermissionService.VersionOf(permission)"><input name="returnUrl" type="hidden" value="@returnUrl"><button class="danger">Xóa</button></form> }
     </div></td></tr>
 }
 @if (Model.Permissions.Count == 0) { <tr><td colspan="6" class="empty">Chưa có quyền truy cập.</td></tr> }

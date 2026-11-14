@@ -1,4 +1,5 @@
 using QuanLyCuDan.Services;
+using QuanLyCuDan.Services.Interfaces;
 using System.Data;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using QuanLyCuDan.Models;
 
 namespace QuanLyCuDan.Controllers;
 [Authorize(AuthenticationSchemes = "Cookies")]
-public sealed class RolesController(RoleService service, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public sealed class RolesController(IRoleService service, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet]
     public async Task<IActionResult> Index()

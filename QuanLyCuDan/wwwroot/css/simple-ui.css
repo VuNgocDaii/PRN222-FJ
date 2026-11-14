@@ -1,0 +1,57 @@
+/* Giao dien don gian cho nguoi moi va nguoi lon tuoi (kieu VNeID): chu to, nut to, it lua chon.
+   Nap SAU theme-vneid.css. Muon bo: go dong <link> simple-ui.css trong cac layout. */
+html{font-size:18px}
+body{line-height:1.65;font-size:1rem}
+h1{font-size:1.9rem}h2{font-size:1.4rem}h3{font-size:1.2rem}
+.muted,.small,.card-meta{font-size:.95rem}
+
+/* Nut va o nhap: de bam, de nhin */
+button,.button,input,select,textarea{font-size:1rem}
+button,.button{min-height:52px;padding:.7rem 1.4rem;border-radius:14px;font-weight:600;cursor:pointer}
+input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select{min-height:52px;padding:.65rem .9rem;border-radius:12px;border:2px solid var(--vn-line,#ddd)}
+textarea{padding:.8rem .9rem;border-radius:12px;border:2px solid var(--vn-line,#ddd);min-height:130px}
+label{font-weight:600;display:block;margin-bottom:1rem}
+label input,label select,label textarea{margin-top:.4rem;font-weight:400;width:100%}
+:focus-visible{outline:3px solid #f7b92b;outline-offset:2px}
+.primary.wide{width:100%}
+
+/* Thanh tren cung: gon, chu to */
+.portal-header nav>a,.portal-header nav button{font-size:1rem}
+.portal-header .brand-mark{width:44px;height:44px;font-size:1rem}
+
+/* Trang chu: bo tranh trang tri, nhan manh 2 nut lon */
+.community-art{display:none}
+.community-hero{display:block;padding:2rem 1rem;text-align:center}
+.community-hero h1{font-size:2.1rem;line-height:1.3}
+.community-hero p{font-size:1.1rem;max-width:34rem;margin:.8rem auto}
+.hero-actions{display:flex;flex-direction:column;gap:.9rem;max-width:26rem;margin:1.5rem auto 0}
+.hero-actions .button{width:100%;justify-content:center;text-align:center;font-size:1.15rem;min-height:60px}
+
+/* O chuc nang lon (kieu VNeID) */
+.tile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin:1.2rem 0 1.8rem}
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;min-height:140px;padding:1rem;
+  background:#fff;border:2px solid var(--vn-line,#f0dcd6);border-radius:20px;text-align:center;text-decoration:none;
+  color:var(--vn-ink,#2b2321);font-weight:700;font-size:1.1rem;box-shadow:0 2px 8px #b80f0f14;transition:transform .1s}
+.tile:hover,.tile:focus-visible{border-color:var(--vn-red,#b80f0f);transform:translateY(-2px);color:var(--vn-red-dark,#8a0a0a)}
+.tile .tile-icon{font-size:2.6rem;line-height:1}
+.tile small{font-weight:400;color:var(--vn-muted,#7a6b68);font-size:.9rem}
+
+/* Cong cu dan: bo menu ben trai, dung nut Quay lai + o chuc nang */
+.resident-nav{display:none}
+.resident-shell{display:block}
+.resident-content{max-width:100%}
+.back-link{display:inline-flex;align-items:center;gap:.4rem;min-height:48px;margin:0 0 1rem;padding:.5rem 1rem;border-radius:14px;
+  background:var(--vn-red-soft,#fdeceb);color:var(--vn-red-dark,#8a0a0a);font-weight:700;text-decoration:none}
+.resident-heading{margin-bottom:1rem}
+.eyebrow{font-size:.85rem}
+
+/* Dang nhap / dang ky: o giua, rong rai */
+.auth-card,.account-card,main form{max-width:100%}
+
+/* Bang cuon ngang tren man hinh nho */
+.table-scroll{overflow-x:auto}
+table{font-size:1rem}
+@media (max-width:600px){html{font-size:17px}.tile-grid{grid-template-columns:1fr 1fr}}
+
+.check-row{display:flex;align-items:center;gap:.6rem;font-weight:500;margin:-.4rem 0 1rem}
+.check-row input{width:1.3rem;height:1.3rem;min-height:0;margin:0}

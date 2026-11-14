@@ -4,9 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
 using QuanLyCuDan.Services;
+using QuanLyCuDan.Services.Interfaces;
 namespace QuanLyCuDan.Controllers;
 [Authorize(AuthenticationSchemes = "Cookies"), Route("Announcements")]
-public sealed class AnnouncementsController(AnnouncementService service, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public sealed class AnnouncementsController(IAnnouncementService service, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(string? search, string filter = "ALL", long? groupId = null, int page = 1) => View(await service.ListAsync(User, search, filter, groupId, page));
@@ -99,7 +100,7 @@ public sealed class AnnouncementsController(AnnouncementService service, Navigat
     }
     private void AddContentErrors(AnnouncementInput input)
     {
-        foreach (var error in AnnouncementService.ValidateContent(input))
+        foreach (var error in service.ValidateContent(input))
             ModelState.AddModelError(error.Key.Length == 0 ? "" : "Input." + error.Key, error.Value);
     }
 }

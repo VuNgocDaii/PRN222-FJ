@@ -1,19 +1,29 @@
 using System.Data;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
-namespace QuanLyCuDan.Services;
+using QuanLyCuDan.Repositories.Interfaces;
+using QuanLyCuDan.Services.Interfaces;
 
-public sealed class AuthService(MyStockContext context) : ApplicationService(context)
+namespace QuanLyCuDan.Services.Implementations;
+
+public sealed class AuthService(
+    IPermissionChecker checker,
+    IPermissionRepository permissions,
+    IUserRepository users,
+    ISessionRepository sessions,
+    IPasswordService passwords,
+    IUnitOfWork unitOfWork) : IAuthService
 {
+    private const string BadLogin = "Tài khoản hoặc mật khẩu không đúng, hoặc tài khoản đang bị khóa.";
+
     public async Task<(AspNetUser User, UserSession Session)> LoginAsync(LoginInput input, string? device)
     {
-        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        var user = await db.AspNetUsers.SingleOrDefaultAsync(x => x.NormalizedUserName == input.UserName.Trim().ToUpperInvariant());
+        await using var tx = await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable);
+        var user = await users.FindByNormalizedNameAsync(input.UserName.Trim().ToUpperInvariant());
         if (user == null || !user.IsActive || user.LockoutEnd > DateTimeOffset.UtcNow)
-            throw new AppFault(401, "Tài khoản hoặc mật khẩu không đúng, hoặc tài khoản đang bị khóa.");
-        if (!VerifyPassword(user, input.Password))
+            throw new AppFault(401, BadLogin);
+        if (!passwords.Verify(user, input.Password))
         {
             user.AccessFailedCount++;
             if (user.AccessFailedCount >= 5)
@@ -21,27 +31,24 @@ public sealed class AuthService(MyStockContext context) : ApplicationService(con
                 user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(15);
                 user.AccessFailedCount = 0;
             }
-
-            await db.SaveChangesAsync();
+            await unitOfWork.SaveChangesAsync();
             await tx.CommitAsync();
-            throw new AppFault(401, "Tài khoản hoặc mật khẩu không đúng, hoặc tài khoản đang bị khóa.");
+            throw new AppFault(401, BadLogin);
         }
-
         user.AccessFailedCount = 0;
         user.LockoutEnd = null;
         // Chỉ thông báo trạng thái sau khi đã kiểm tra đúng mật khẩu.
         if (user.VerificationStatus is "PENDING" or "REJECTED")
         {
-            await db.SaveChangesAsync();
+            await unitOfWork.SaveChangesAsync();
             await tx.CommitAsync();
-            string message = user.VerificationStatus == "PENDING"
+            throw new AppFault(403, user.VerificationStatus == "PENDING"
                 ? "Tài khoản đang chờ quản trị viên phê duyệt."
-                : "Đăng ký bị từ chối. Lý do: " + user.RejectionReason;
-            throw new AppFault(403, message);
+                : "Đăng ký bị từ chối. Lý do: " + user.RejectionReason);
         }
-        // Upgrade SQL demo hashes to the built-in Identity PBKDF2 format after successful login.
+        // Nâng cấp hash SHA256 của dữ liệu demo lên định dạng PBKDF2 của Identity.
         if (user.PasswordHash!.StartsWith("SHA256$"))
-            user.PasswordHash = HashPassword(user, input.Password);
+            user.PasswordHash = passwords.Hash(user, input.Password);
         var session = new UserSession
         {
             Id = Guid.NewGuid(),
@@ -51,34 +58,33 @@ public sealed class AuthService(MyStockContext context) : ApplicationService(con
             CreatedAt = DateTime.UtcNow,
             AbsoluteExpiresAt = DateTime.UtcNow.AddDays(30)
         };
-        db.UserSessions.Add(session);
-        await db.SaveChangesAsync();
+        sessions.Add(session);
+        await unitOfWork.SaveChangesAsync();
         await tx.CommitAsync();
         return (user, session);
     }
 
     public async Task ChangePasswordAsync(ClaimsPrincipal principal, PasswordInput input)
     {
-        var user = await db.AspNetUsers.SingleAsync(x => x.Id == CurrentUserId(principal));
-        if (!VerifyPassword(user, input.CurrentPassword))
+        var user = await users.FindAsync(checker.UserId(principal)) ?? throw new AppFault(404, "Không tìm thấy tài khoản.");
+        if (!passwords.Verify(user, input.CurrentPassword))
             throw new AppFault(400, "Mật khẩu hiện tại không đúng.");
-        await using var tx = await db.Database.BeginTransactionAsync();
-        user.PasswordHash = HashPassword(user, input.NewPassword);
+        await using var tx = await unitOfWork.BeginTransactionAsync();
+        user.PasswordHash = passwords.Hash(user, input.NewPassword);
         user.SecurityStamp = Guid.NewGuid().ToString();
-        await db.UserSessions.Where(s => s.UserId == user.Id && s.RevokedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, DateTime.UtcNow).SetProperty(x => x.RevocationReason, "PASSWORD_CHANGED"));
-        await db.SaveChangesAsync();
+        await users.RevokeSessionsAsync(user.Id, "PASSWORD_CHANGED");
+        await unitOfWork.SaveChangesAsync();
         await tx.CommitAsync();
     }
-    public Task RevokeCurrentSessionAsync(ClaimsPrincipal actor)
-    {
-        var id = CurrentUserId(actor); var sid = Guid.Parse(actor.FindFirstValue("sid")!);
-        return db.UserSessions.Where(s => s.UserId == id && s.Id == sid && s.RevokedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, DateTime.UtcNow).SetProperty(x => x.RevocationReason, "LOGOUT"));
-    }
+
+    public Task RevokeCurrentSessionAsync(ClaimsPrincipal actor) =>
+        sessions.RevokeAsync(checker.UserId(actor), Guid.Parse(actor.FindFirstValue("sid")!), "LOGOUT");
+
     public async Task<string> GetDestinationAsync(string id)
     {
-        if (await Effective(id).AnyAsync(x => x.PermissionCode == "accounts.read" && x.ScopeType == "SYSTEM")) return "/Admin";
-        if (await Effective(id).AnyAsync(x => x.PermissionCode == "announcements.read" && (x.ScopeType == "GROUP" || x.ScopeType == "AREA"))) return "/Announcements";
-        if (await Effective(id).AnyAsync(x => x.PermissionCode == "profile.self.read" && x.ScopeType == "SELF")) return "/Resident";
+        if (await permissions.HasAsync(id, "accounts.read", "SYSTEM")) return "/Admin";
+        if (await permissions.HasAsync(id, "announcements.read", "GROUP", "AREA")) return "/Announcements";
+        if (await permissions.HasAsync(id, "profile.self.read", "SELF")) return "/Resident";
         return "/Account/Profile";
     }
 }

@@ -3,16 +3,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@ViewData["Title"] · Quản lý cư dân</title>
+    <title>@ViewData["Title"] · Cổng thông tin thôn</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
     @await RenderSectionAsync("Styles", required: false)
+    <link rel="stylesheet" href="~/css/theme-vneid.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/simple-ui.css" asp-append-version="true">
 </head>
 <body class="standard-layout">
     <a class="skip-link" href="#main-content">Chuyển đến nội dung</a>
     <header class="standard-header">
         <nav class="container standard-nav" aria-label="Điều hướng chính">
-            <a class="app-brand" asp-controller="Home" asp-action="Index"><span class="brand-mark">KDC</span><span>Quản lý cư dân</span></a>
+            <a class="app-brand" asp-controller="Home" asp-action="Index"><span class="brand-mark">TT</span><span>Cổng thông tin thôn</span></a>
             <div class="standard-links">
                 <a href="/">Trang công khai</a>
                 @if (User.Identity?.IsAuthenticated == true) {
@@ -25,7 +27,7 @@
         </nav>
     </header>
     <main id="main-content" class="container standard-main">@RenderBody()</main>
-    <footer class="standard-footer"><div class="container">KDC · Cổng thông tin cư dân <a asp-controller="Home" asp-action="Privacy">Quyền riêng tư</a></div></footer>
+    <footer class="standard-footer"><div class="container">Cổng thông tin thôn <a asp-controller="Home" asp-action="Privacy">Quyền riêng tư</a></div></footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     @if (User.Identity?.IsAuthenticated == true)

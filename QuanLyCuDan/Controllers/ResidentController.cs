@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +7,7 @@ using QuanLyCuDan.Models;
 using QuanLyCuDan.Services;
 namespace QuanLyCuDan.Controllers;
 [Authorize(AuthenticationSchemes = "Cookies"), Route("Resident")]
-public sealed class ResidentController(ResidentService service, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public sealed class ResidentController(IResidentService service, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet("{section?}")]
     public async Task<IActionResult> Index(string section = "overview", int page = 1) => View(await service.GetPortalAsync(User, section, page));

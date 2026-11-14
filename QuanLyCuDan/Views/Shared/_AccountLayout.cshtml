@@ -3,13 +3,15 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>@ViewData["Title"] · Quản lý cư dân</title>
+    <title>@ViewData["Title"] · Cổng thông tin thôn</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/app-ui.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/theme-vneid.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/simple-ui.css" asp-append-version="true">
 </head>
 <body class="login-page">
     <main class="login-card @(ViewData["WideAccount"] is true ? "registration-account-card" : "")">
-        <a class="auth-brand" asp-controller="Home" asp-action="Index"><span class="brand-mark">KDC</span><span>Quản lý cư dân</span></a>
+        <a class="auth-brand" asp-controller="Home" asp-action="Index"><span class="brand-mark">TT</span><span>Cổng thông tin thôn</span></a>
         @RenderBody()
         <p class="footnote"><a href="/">← Về trang công khai</a></p>
     </main>

@@ -1,28 +1,16 @@
 ﻿@model PublicHomeViewModel
 @{ Layout = "_PortalLayout"; ViewData["Title"] = "Trang công khai"; }
-<section class="community-hero">
-    <div><p class="eyebrow">CỔNG THÔNG TIN CỘNG ĐỒNG</p><h1>Một nơi kết nối.<br>Một cộng đồng gắn kết.</h1><p>Cập nhật thông báo từ tổ dân phố, thực hiện yêu cầu cư trú và gửi ý kiến đến ban quản lý một cách thuận tiện.</p><div class="hero-actions"><a href="/Resident" class="button primary">Vào cổng cư dân <span aria-hidden="true">↗</span></a><a href="#announcements" class="button secondary">Xem thông báo</a></div></div>
-    <div class="community-art" aria-hidden="true"><div class="art-sun"></div><div class="art-building building-one"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="art-building building-two"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="art-building building-three"><i></i><i></i><i></i><i></i></div><div class="art-tree tree-one"></div><div class="art-tree tree-two"></div><div class="art-ground"></div><span class="art-caption">Cùng xây dựng nơi đáng sống</span></div>
-</section>
-<section class="service-grid" aria-label="Dịch vụ cư dân">
-    <a href="/Resident/requests" class="service-card"><span class="service-icon" aria-hidden="true">01</span><div><h2>Yêu cầu cư trú</h2><p>Gửi hồ sơ, theo dõi tiến độ xử lý.</p></div><span aria-hidden="true">↗</span></a>
-    <a href="/Resident/feedback" class="service-card"><span class="service-icon" aria-hidden="true">02</span><div><h2>Phản ánh & góp ý</h2><p>Đóng góp ý kiến cho cộng đồng.</p></div><span aria-hidden="true">↗</span></a>
-    <a href="/Resident/fees" class="service-card"><span class="service-icon" aria-hidden="true">03</span><div><h2>Khoản thu của hộ</h2><p>Chủ hộ tra cứu nghĩa vụ và biên nhận.</p></div><span aria-hidden="true">↗</span></a>
-</section>
+<section class="community-hero"><p class="eyebrow">CỔNG THÔNG TIN THÔN</p><h1>Thông báo của thôn<br>và gửi ý kiến dễ dàng</h1><div class="hero-actions">@if (User.Identity?.IsAuthenticated == true) { <a href="/Resident" class="button primary">Vào trang cư dân</a> } else { <p>Bấm “Đăng nhập” để vào. Nếu chưa có tài khoản, bấm “Đăng ký”.</p><a href="/Account/Login" class="button primary">Đăng nhập</a><a href="/Account/Register" class="button secondary">Đăng ký tài khoản</a> }</div></section>
+
 <section id="announcements" class="announcement-section">
-    <div class="section-heading"><div><p class="eyebrow">THÔNG TIN TỪ TỔ DÂN PHỐ</p><h2>Thông báo cộng đồng</h2></div><span class="muted">@Model.Total thông báo</span></div>
-    <form method="get" action="/" class="portal-filter">
-        <label>Tìm thông báo<input name="search" value="@Model.Search" placeholder="Nhập tiêu đề hoặc nội dung…" maxlength="200"></label>
-        <label>Tổ dân phố<select name="groupId"><option value="">Tất cả tổ dân phố</option>@foreach (var group in Model.Groups) { <option value="@group.Id" selected="@(Model.GroupId == group.Id)">@group.Name</option> }</select></label>
-        <button type="submit" class="primary">Tìm kiếm</button><a href="/#announcements">Đặt lại</a>
-    </form>
-    @if (Model.Announcements.Count == 0) { <div class="empty-state"><h3>Chưa có thông báo phù hợp</h3><p>Thử thay đổi từ khóa hoặc tổ dân phố để tìm thêm thông tin.</p></div> }
+    <div class="section-heading"><div><p class="eyebrow">THÔNG TIN TỪ THÔN</p><h2>Thông báo mới</h2></div></div>
+    @if (Model.Announcements.Count == 0) { <div class="empty-state"><h3>Chưa có thông báo nào</h3><p>Thông báo mới của thôn sẽ xuất hiện tại đây.</p></div> }
     <div class="announcement-grid">
     @foreach (var item in Model.Announcements)
     {
-        <article class="announcement-card"><div class="card-meta"><span class="badge">@item.ResidentialGroup.Name</span><time>@item.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy")</time></div><h3><a href="/thong-bao/@item.Id">@item.Title</a></h3><p>@(item.Body.Length > 170 ? item.Body[..170] + "…" : item.Body)</p><a href="/thong-bao/@item.Id" class="read-more" aria-label="Đọc thông báo: @item.Title">Đọc thông báo <span aria-hidden="true">→</span></a></article>
+        <article class="announcement-card"><div class="card-meta"><time>@item.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy")</time></div><h3><a href="/thong-bao/@item.Id">@item.Title</a></h3><p>@(item.Body.Length > 170 ? item.Body[..170] + "…" : item.Body)</p><a href="/thong-bao/@item.Id" class="read-more" aria-label="Đọc thông báo: @item.Title">Đọc thông báo <span aria-hidden="true">→</span></a></article>
     }
     </div>
-    @if (Model.Total > 9) { <nav class="pagination" aria-label="Phân trang thông báo">@if (Model.Page > 1) { <a asp-action="Index" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-groupId="@Model.GroupId">← Trang trước</a> }<span>Trang @Model.Page / @((int)Math.Ceiling(Model.Total / 9d))</span>@if (Model.Page * 9 < Model.Total) { <a asp-action="Index" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-groupId="@Model.GroupId">Trang sau →</a> }</nav> }
+    @if (Model.Total > 9) { <nav class="pagination" aria-label="Phân trang thông báo">@if (Model.Page > 1) { <a asp-action="Index" asp-route-page="@(Model.Page - 1)">← Trang trước</a> }<span>Trang @Model.Page / @((int)Math.Ceiling(Model.Total / 9d))</span>@if (Model.Page * 9 < Model.Total) { <a asp-action="Index" asp-route-page="@(Model.Page + 1)">Trang sau →</a> }</nav> }
 </section>
-<section class="join-banner"><div><h2>Thông tin của bạn, trong tầm tay.</h2><p>Đăng ký tài khoản để sử dụng dịch vụ cư dân sau khi được xác minh.</p></div><a class="button primary" href="/Account/Register">Đăng ký tài khoản →</a></section>
+

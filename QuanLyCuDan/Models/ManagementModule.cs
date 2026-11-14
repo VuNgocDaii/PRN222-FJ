@@ -5,7 +5,7 @@ public sealed record ManagementModule(string Key, string Title, string Descripti
     public static IReadOnlyList<ManagementModule> All { get; } = new ManagementModule[]
     {
         new("overview", "Tổng quan", "Theo dõi tình hình khu dân cư.", new[] { "Thống kê cư dân và hộ gia đình", "Yêu cầu đang chờ xử lý", "Tình hình thu phí" }),
-        new("units", "Khu dân cư / Tổ dân phố", "Quản lý địa bàn và cơ cấu khu dân cư.", new[] { "Danh sách khu dân cư", "Danh sách tổ dân phố", "Thông tin và trạng thái địa bàn" }),
+        new("units", "Xã / Thôn", "Quản lý địa bàn và cơ cấu khu dân cư.", new[] { "Danh sách xã", "Danh sách thôn", "Thông tin và trạng thái địa bàn" }),
         new("households", "Hộ gia đình", "Quản lý hồ sơ hộ và thành viên.", new[] { "Danh sách hộ gia đình", "Chủ hộ và địa chỉ", "Thành viên trong hộ" }),
         new("residents", "Cư dân", "Quản lý hồ sơ và tình trạng cư trú.", new[] { "Danh sách cư dân", "Thông tin cá nhân", "Thường trú, tạm trú và chuyển đi" }),
         new("residence-requests", "Yêu cầu cư trú", "Tiếp nhận và xét duyệt thay đổi cư trú.", new[] { "Gửi yêu cầu cư trú", "Danh sách chờ duyệt", "Kết quả và lịch sử biến động" }),

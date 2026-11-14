@@ -1,21 +1,19 @@
-using System.Data;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using QuanLyCuDan.Auth;
-using QuanLyCuDan.Models;
-namespace QuanLyCuDan.Services;
+using QuanLyCuDan.Repositories.Interfaces;
+using QuanLyCuDan.Services.Interfaces;
 
-public sealed record NavigationAccess(HashSet<string> Permissions, bool CanUseResident, bool CanManageAnnouncements, bool CanReviewRegistrations, bool CanManageOrganizations);
-public sealed class NavigationService(MyStockContext context) : ApplicationService(context)
+namespace QuanLyCuDan.Services.Implementations;
+
+public sealed class NavigationService(IPermissionChecker checker, IPermissionRepository permissions, IUserRepository users) : INavigationService
 {
     public async Task<NavigationAccess> GetAsync(ClaimsPrincipal actor)
     {
-        var id = CurrentUserId(actor);
-        var access = (await Effective(id).Where(x => x.ScopeType == "SYSTEM").Select(x => x.PermissionCode).ToListAsync()).ToHashSet();
+        var id = checker.UserId(actor);
+        var access = await permissions.GetSystemCodesAsync(id);
         return new(access,
-            await Effective(id).AnyAsync(x => x.ScopeType == "SELF" && x.PermissionCode == "profile.self.read"),
-            await Effective(id).AnyAsync(x => (x.ScopeType == "GROUP" || x.ScopeType == "AREA") && x.PermissionCode == "announcements.read"),
-            access.Contains("accounts.read") && access.Contains("accounts.update") && await IsAdmin(id),
-            await Effective(id).AnyAsync(p => p.PermissionCode == "organizations.read"));
+            await permissions.HasAsync(id, "profile.self.read", "SELF"),
+            await permissions.HasAsync(id, "announcements.read", "GROUP", "AREA"),
+            access.Contains("accounts.read") && access.Contains("accounts.update") && await users.IsAdminAsync(id),
+            await permissions.HasAnyAsync(id, "organizations.read"));
     }
 }

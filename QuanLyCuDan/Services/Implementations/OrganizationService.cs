@@ -1,66 +1,82 @@
 using System.Data;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
+using QuanLyCuDan.Repositories.Interfaces;
+using QuanLyCuDan.Services.Interfaces;
 
-namespace QuanLyCuDan.Services;
+namespace QuanLyCuDan.Services.Implementations;
 
-public sealed class OrganizationService(MyStockContext context) : ApplicationService(context)
+public sealed class OrganizationService(
+    IPermissionChecker checker,
+    IOrganizationRepository organizations,
+    IResidentialUnitRepository units,
+    IAuditRepository audit,
+    IUnitOfWork unitOfWork) : IOrganizationService
 {
-    private async Task<IQueryable<Organization>> AccessibleAsync(ClaimsPrincipal actor, string permission)
+    private async Task<(bool All, long[] Groups, long[] Own)> ScopeAsync(ClaimsPrincipal actor, string permission)
     {
-        var grants = await Effective(CurrentUserId(actor)).Where(p => p.PermissionCode == permission).ToListAsync();
-        if (grants.Any(p => p.ScopeType == "SYSTEM")) return db.Organizations;
-        var groups = grants.Where(p => p.ScopeType == "GROUP" && p.OrganizationId == null).Select(p => p.ResidentialGroupId!.Value).ToArray();
-        var own = grants.Where(p => p.ScopeType == "GROUP" && p.OrganizationId != null).Select(p => p.OrganizationId!.Value).ToArray();
-        return db.Organizations.Where(o => groups.Contains(o.ResidentialGroupId) || own.Contains(o.Id));
+        var grants = await checker.GrantsAsync(actor, permission);
+        return (grants.Any(p => p.ScopeType == "SYSTEM"),
+            grants.Where(p => p.ScopeType == "GROUP" && p.OrganizationId == null).Select(p => p.ResidentialGroupId!.Value).ToArray(),
+            grants.Where(p => p.ScopeType == "GROUP" && p.OrganizationId != null).Select(p => p.OrganizationId!.Value).ToArray());
     }
 
     public async Task<OrganizationPage> GetAsync(ClaimsPrincipal actor, long? id)
     {
-        var organizations = await (await AccessibleAsync(actor, "organizations.read")).AsNoTracking().Include(o => o.ResidentialGroup).OrderBy(o => o.Name).ToListAsync();
-        var canManage = await Effective(CurrentUserId(actor)).AnyAsync(p => p.PermissionCode == "organizations.manage" && p.ScopeType == "SYSTEM");
-        if (organizations.Count == 0 && !canManage) throw new AppFault(403, "Bạn chưa được cấp quyền xem tổ chức.");
-        var selected = id == null ? organizations.FirstOrDefault() : organizations.SingleOrDefault(o => o.Id == id);
-        if (id != null && selected == null) throw new AppFault(404, "Không tìm thấy tổ chức.");
-        var page = new OrganizationPage { Organizations = organizations, SelectedId = selected?.Id, CanManage = canManage };
+        var read = await ScopeAsync(actor, "organizations.read");
+        var list = await organizations.GetAccessibleAsync(read.All, read.Groups, read.Own);
+        var canManage = await checker.HasSystemPermissionAsync(actor, "organizations.manage");
+        if (list.Count == 0 && !canManage)
+            throw new AppFault(403, "Bạn chưa được cấp quyền xem tổ chức.");
+        var selected = id == null ? list.FirstOrDefault() : list.SingleOrDefault(o => o.Id == id);
+        if (id != null && selected == null)
+            throw new AppFault(404, "Không tìm thấy tổ chức.");
+        var page = new OrganizationPage { Organizations = list, SelectedId = selected?.Id, CanManage = canManage };
         if (canManage)
-            page.Groups = await db.ResidentialUnits.AsNoTracking().Where(g => g.UnitType == "GROUP" && g.IsActive && g.ParentUnit != null && g.ParentUnit.IsActive).OrderBy(g => g.Name).ToListAsync();
+            page.Groups = await units.GetActiveGroupsAsync();
         if (selected != null)
         {
-            page.CanManageMembers = selected.IsActive && await (await AccessibleAsync(actor, "organizations.members.manage")).AnyAsync(o => o.Id == selected.Id);
-            page.Members = await db.OrganizationMembers.AsNoTracking().Include(m => m.Resident).Where(m => m.OrganizationId == selected.Id && m.LeftAt == null).OrderBy(m => m.Resident.FullName).ToListAsync();
+            var manage = await ScopeAsync(actor, "organizations.members.manage");
+            page.CanManageMembers = selected.IsActive &&
+                await organizations.FindActiveAccessibleAsync(manage.All, manage.Groups, manage.Own, selected.Id) != null;
+            page.Members = await organizations.GetMembersAsync(selected.Id);
             if (page.CanManageMembers)
-                page.Candidates = await db.Residents.AsNoTracking().Where(r => r.Household != null && !r.Household.IsArchived && r.Household.ResidentialGroupId == selected.ResidentialGroupId && !db.OrganizationMembers.Any(m => m.OrganizationId == selected.Id && m.ResidentId == r.Id && m.LeftAt == null)).OrderBy(r => r.FullName).ToListAsync();
+                page.Candidates = await organizations.GetCandidatesAsync(selected);
         }
         return page;
     }
 
     public async Task CreateAsync(ClaimsPrincipal actor, OrganizationInput input)
     {
-        await RequirePermission(actor, "organizations.manage");
-        if (string.IsNullOrWhiteSpace(input.Code) || string.IsNullOrWhiteSpace(input.Name)) throw new AppFault(400, "Nhập mã và tên tổ chức.");
-        if (!await db.ResidentialUnits.AnyAsync(g => g.Id == input.ResidentialGroupId && g.UnitType == "GROUP" && g.IsActive && g.ParentUnit != null && g.ParentUnit.IsActive))
+        if (!await checker.HasSystemPermissionAsync(actor, "organizations.manage"))
+            throw new AppFault(403, "Bạn không có quyền thực hiện thao tác này.");
+        var code = input.Code?.Trim() ?? "";
+        var name = input.Name?.Trim() ?? "";
+        if (code.Length == 0 || name.Length == 0)
+            throw new AppFault(400, "Nhập mã và tên tổ chức.");
+        if (!await units.IsActiveGroupAsync(input.ResidentialGroupId))
             throw new AppFault(400, "Chọn thôn đang hoạt động.");
-        if (await db.Organizations.AnyAsync(o => o.Code == input.Code.Trim())) throw new AppFault(409, "Mã tổ chức đã tồn tại.");
-        db.Organizations.Add(new Organization { Code = input.Code.Trim(), Name = input.Name.Trim(), ResidentialGroupId = input.ResidentialGroupId });
-        Audit(CurrentUserId(actor), "ORGANIZATION_CREATED", "Organization", input.Code.Trim());
-        await db.SaveChangesAsync();
+        if (await organizations.CodeExistsAsync(code))
+            throw new AppFault(409, "Mã tổ chức đã tồn tại.");
+        organizations.Add(new Organization { Code = code, Name = name, ResidentialGroupId = input.ResidentialGroupId });
+        audit.Add(checker.UserId(actor), "ORGANIZATION_CREATED", "Organization", code);
+        await unitOfWork.SaveChangesAsync();
     }
 
     public async Task SetMemberAsync(ClaimsPrincipal actor, long id, long residentId, bool active, string? rowVersion)
     {
-        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        var org = await (await AccessibleAsync(actor, "organizations.members.manage")).SingleOrDefaultAsync(o => o.Id == id && o.IsActive)
+        await using var tx = await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable);
+        var scope = await ScopeAsync(actor, "organizations.members.manage");
+        var org = await organizations.FindActiveAccessibleAsync(scope.All, scope.Groups, scope.Own, id)
             ?? throw new AppFault(403, "Bạn không có quyền quản lý thành viên tổ chức này.");
-        var member = await db.OrganizationMembers.SingleOrDefaultAsync(m => m.OrganizationId == id && m.ResidentId == residentId);
+        var member = await organizations.FindMemberAsync(id, residentId);
         if (active)
         {
-            if (!await db.Residents.AnyAsync(r => r.Id == residentId && r.Household != null && !r.Household.IsArchived && r.Household.ResidentialGroupId == org.ResidentialGroupId))
+            if (!await organizations.ResidentInGroupAsync(residentId, org.ResidentialGroupId))
                 throw new AppFault(400, "Thành viên phải có hồ sơ cư dân trong thôn của tổ chức.");
             if (member == null)
-                db.OrganizationMembers.Add(new OrganizationMember { OrganizationId = id, ResidentId = residentId, JoinedAt = DateTime.UtcNow });
+                organizations.AddMember(new OrganizationMember { OrganizationId = id, ResidentId = residentId, JoinedAt = DateTime.UtcNow });
             else if (member.LeftAt != null)
             {
                 member.JoinedAt = DateTime.UtcNow;
@@ -69,12 +85,13 @@ public sealed class OrganizationService(MyStockContext context) : ApplicationSer
         }
         else
         {
-            if (member == null) throw new AppFault(404, "Không tìm thấy thành viên.");
-            SetVersion(member, rowVersion ?? "");
+            if (member == null)
+                throw new AppFault(404, "Không tìm thấy thành viên.");
+            unitOfWork.SetRowVersion(member, rowVersion ?? "");
             member.LeftAt ??= DateTime.UtcNow;
         }
-        Audit(CurrentUserId(actor), active ? "ORGANIZATION_MEMBER_ADDED" : "ORGANIZATION_MEMBER_REMOVED", "Organization", id.ToString());
-        await db.SaveChangesAsync();
+        audit.Add(checker.UserId(actor), active ? "ORGANIZATION_MEMBER_ADDED" : "ORGANIZATION_MEMBER_REMOVED", "Organization", id.ToString());
+        await unitOfWork.SaveChangesAsync();
         await tx.CommitAsync();
     }
 }

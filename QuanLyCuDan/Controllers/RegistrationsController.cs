@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services.Interfaces;
 using QuanLyCuDan.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace QuanLyCuDan.Controllers;
 
 [Authorize(AuthenticationSchemes = "Cookies")]
-public class RegistrationsController(RegistrationService service, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public class RegistrationsController(IRegistrationService service, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet]
     public async Task<IActionResult> Index(string status = "PENDING")

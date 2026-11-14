@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services.Interfaces;
 using QuanLyCuDan.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ using QuanLyCuDan.Auth;
 using QuanLyCuDan.Models;
 
 namespace QuanLyCuDan.Controllers;
-public sealed class AccountController(AccountService accounts, AuthService authentication, NavigationService navigation, PersistenceSession persistence) : AuthControllerBase(authentication, navigation, persistence)
+public sealed class AccountController(IAccountService accounts, IAuthService authentication, INavigationService navigation, PersistenceSession persistence) : AuthControllerBase(authentication, navigation, persistence)
 {
     [AllowAnonymous, HttpGet]
     public async Task<IActionResult> Register()

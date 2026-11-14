@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services.Interfaces;
 using QuanLyCuDan.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using QuanLyCuDan.Models;
 namespace QuanLyCuDan.Controllers;
 
 [Authorize(AuthenticationSchemes = "Cookies")]
-public sealed class ManagementController(NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public sealed class ManagementController(INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet("/Management/{module=overview}")]
     public IActionResult Index(string module)

@@ -2,9 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuanLyCuDan.Models;
 using QuanLyCuDan.Services;
+using QuanLyCuDan.Services.Interfaces;
 namespace QuanLyCuDan.Controllers;
 [AllowAnonymous]
-public sealed class HomeController(PublicPortalService service) : Controller
+public sealed class HomeController(IPublicPortalService service) : Controller
 {
     public async Task<IActionResult> Index(string? search, long? groupId, int page = 1) => View(await service.GetHomeAsync(search, groupId, page));
     [HttpGet("/thong-bao/{id:long}")]

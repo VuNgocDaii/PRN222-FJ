@@ -41,6 +41,7 @@ public sealed class AnnouncementDetailViewModel
     public Announcement Item { get; set; } = null!;
     public bool CanEdit { get; set; }
     public bool CanSubmit { get; set; }
+    public bool PublishesOnSubmit { get; set; }
     public bool CanReview { get; set; }
     public bool CanUnpublish { get; set; }
     public bool CanWithdraw { get; set; }
@@ -57,6 +58,6 @@ public static class AnnouncementLabels
     public static string Status(string status) => status switch { "PUBLISHED" => "Đã đăng", "UNPUBLISHED" => "Đã gỡ", _ => "Chưa đăng" };
     public static string Event(string code) => code switch {
         "ANNOUNCEMENT_CREATED" => "Soạn nháp", "ANNOUNCEMENT_UPDATED" => "Sửa nội dung, yêu cầu duyệt lại",
-        "ANNOUNCEMENT_SUBMITTED" => "Gửi duyệt", "ANNOUNCEMENT_APPROVED" => "Duyệt và tự động đăng thông báo", "ANNOUNCEMENT_REJECTED" => "Từ chối duyệt",
+        "ANNOUNCEMENT_SUBMITTED" => "Gửi duyệt", "ANNOUNCEMENT_SELF_PUBLISHED" => "Đăng thông báo", "ANNOUNCEMENT_APPROVED" => "Duyệt và tự động đăng thông báo", "ANNOUNCEMENT_REJECTED" => "Từ chối duyệt",
         "ANNOUNCEMENT_PUBLISHED" => "Đăng thông báo", "ANNOUNCEMENT_UNPUBLISHED" => "Gỡ thông báo", "ANNOUNCEMENT_WITHDRAWN" => "Rút lại để chỉnh sửa", _ => code };
 }

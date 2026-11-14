@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuanLyCuDan.Models;
 using QuanLyCuDan.Services;
+using QuanLyCuDan.Services.Interfaces;
 
 namespace QuanLyCuDan.Controllers;
 
 [Authorize(AuthenticationSchemes = "Cookies")]
-public sealed class OrganizationsController(OrganizationService service, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public sealed class OrganizationsController(IOrganizationService service, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet]
     public async Task<IActionResult> Index(long? id) => View("Index", await service.GetAsync(User, id));

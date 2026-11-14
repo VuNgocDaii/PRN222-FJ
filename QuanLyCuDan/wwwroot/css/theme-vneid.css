@@ -1,0 +1,126 @@
+/* Theme phong cach VNeID (do - vang). File them moi, nap SAU admin.css/portal.css de ghi de mau.
+   Muon bo theme: go dong <link> theme-vneid.css trong cac layout. */
+:root{
+  --green:#b80f0f;            /* bien mau chinh cu cua admin.css -> do co */
+  --vn-red:#b80f0f;
+  --vn-red-dark:#8a0a0a;
+  --vn-red-soft:#fdeceb;
+  --vn-gold:#f7b92b;
+  --vn-gold-soft:#fff1d1;
+  --vn-ink:#2b2321;
+  --vn-muted:#7a6b68;
+  --vn-bg:#fdf4ef;
+  --vn-line:#f0dcd6;
+  --border:#f0dcd6;
+  background:var(--vn-bg);
+  color:var(--vn-ink);
+}
+body,.portal-body{background:var(--vn-bg);color:var(--vn-ink)}
+a{color:var(--vn-red)}
+a:hover{color:var(--vn-red-dark)}
+
+/* Header / thanh tren cung: vach do + vang */
+.portal-header{background:linear-gradient(135deg,var(--vn-red),var(--vn-red-dark));border-bottom:3px solid var(--vn-gold);color:#fff}
+.portal-header a,.portal-header nav>a,.portal-brand,.portal-brand small{color:#fff}
+.portal-header nav>a:hover{color:var(--vn-gold)}
+.portal-header .selected{color:var(--vn-gold);border-bottom:2px solid var(--vn-gold)}
+.portal-header .brand-mark{background:var(--vn-gold);color:var(--vn-red-dark)}
+.portal-header .button.primary,.portal-header .primary{background:var(--vn-gold);color:var(--vn-red-dark)}
+.portal-header .secondary{background:transparent;color:#fff;border:1px solid #ffffff88}
+
+/* Nut / the / badge */
+.primary,.status-tabs a.active{background:var(--vn-red);border-color:var(--vn-red);color:#fff}
+.primary:hover{background:var(--vn-red-dark)}
+.secondary{background:var(--vn-red-soft);color:var(--vn-red-dark);border:1px solid var(--vn-line)}
+.brand-mark{background:var(--vn-red);color:#fff}
+.badge{background:var(--vn-gold-soft);color:#7a5600}
+.eyebrow{color:var(--vn-red)}
+.muted,dt,.card-meta,.footnote{color:var(--vn-muted)}
+input:focus,select:focus,textarea:focus{border-color:var(--vn-red)}
+.btn:focus,.form-control:focus{box-shadow:0 0 0 .2rem #b80f0f33}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #e8909c}
+
+/* Sidebar quan tri */
+.sidebar{background:#fff;border-right:1px solid var(--vn-line);border-top:4px solid var(--vn-red)}
+.brand{color:var(--vn-red-dark)}
+.nav-item{color:#6f5f5c}
+.nav-item:hover{background:var(--vn-red-soft)}
+.nav-item.active{background:var(--vn-red-soft);color:var(--vn-red);box-shadow:inset 3px 0 var(--vn-red)}
+.panel,.login-card,.service-card,.announcement-card,.fee-summary>div,.resident-nav{border-color:var(--vn-line)}
+.login-page{background:radial-gradient(ellipse at top left,#f3c3bd,transparent 65%),var(--vn-bg)}
+th{background:#faf6f5;color:var(--vn-muted)}
+th,td{border-bottom-color:#f0e7e5}
+input,select,textarea{border-color:#decfcb}
+
+/* Trang chu cong dong */
+.community-hero{background:radial-gradient(circle at 80% 20%,#d11a1a,transparent 55%),linear-gradient(160deg,var(--vn-red),var(--vn-red-dark));border:0;color:#fff}
+.community-hero h1{color:#fff}
+.community-hero p:not(.eyebrow){color:#ffe9ec}
+.community-hero .eyebrow{color:var(--vn-gold)}
+.community-art{background:#ffffff1f}
+.art-sun{background:var(--vn-gold)}
+.building-one{background:#e8737f}.building-two{background:#ffd54a}.building-three{background:#f2a1a9}
+.art-ground{background:#7d0a17}.art-tree{background:#a30f21}
+.art-building i{background:#fff4cf;border-bottom-color:#b80f0f}
+.service-card:hover{border-color:var(--vn-red)}
+.service-icon{background:var(--vn-red-soft);color:var(--vn-red)}
+.announcement-card h3 a{color:var(--vn-ink)}
+.announcement-card h3 a:hover{color:var(--vn-red)}
+.announcement-card p,.service-card p{color:var(--vn-muted)}
+.join-banner,.welcome-panel,.processing-note{background:var(--vn-gold-soft)}
+.join-banner p,.welcome-panel>p:not(.eyebrow){color:#6b5a2a}
+.empty-state{border-color:#e3cfcb;color:var(--vn-muted)}
+.empty-state h3{color:var(--vn-ink)}
+.portal-footer{background:var(--vn-red-dark);border-top:3px solid var(--vn-gold);color:#ffd9dd}
+.portal-footer strong{color:var(--vn-gold)}
+
+/* Cong cu dan */
+.resident-nav nav a{color:#6f5f5c}
+.resident-nav nav a:hover,.resident-nav nav a.active{background:var(--vn-red-soft);color:var(--vn-red)}
+.fee-summary strong{color:var(--vn-red)}
+.notification.unread{border-left-color:var(--vn-red)}
+.timeline{border-left-color:#ecd5d2}
+.timeline li:before{background:var(--vn-red);border-color:var(--vn-bg)}
+.timeline .prose,.registration-profile,.announcement-preview,.registration-summary{background:#faf5f3}
+
+/* Trang thai: giu ngu nghia (xanh = duyet, vang = cho, do nhat = tu choi) */
+.announcement-pending,.status-pending{background:var(--vn-gold-soft);color:#7a5600}
+.announcement-approved{background:#e0f1e4;color:#27613a}
+.announcement-rejected,.status-rejected{background:#fde4e4;color:#8a0a0a}
+.danger{background:#fff;color:var(--vn-red-dark);border:1px solid var(--vn-red)}
+
+/* Ghi de app-ui.css / feedback.css (them sau khi theme nap cuoi) */
+.primary.nav-item{background:var(--vn-red);color:#fff}
+.primary.nav-item:hover{background:var(--vn-red-dark)}
+.sidebar nav .active{background:var(--vn-red-soft);color:var(--vn-red)}
+.crud-panel details > form label{background:#faf5f3}
+.skip-link{color:var(--vn-red);border-color:var(--vn-red)}
+.form-help{color:var(--vn-muted)}
+.form-help.error{color:var(--vn-red-dark)}
+.feedback-heading{background:linear-gradient(110deg,#fdeceb,#fff4ee);border-color:var(--vn-line);border-left-color:var(--vn-red)}
+.feedback-eyebrow,.feedback-heading h1{color:var(--vn-red)}
+.feedback-heading .badge{background:var(--vn-gold-soft);color:#7a5600;border-color:#f1d9a0}
+
+/* Hover: link thuong doi mau, nut thi giu chu doc duoc */
+a.primary:hover,a.button.primary:hover,.primary:hover,.status-tabs a.active:hover{color:#fff}
+a.secondary:hover,.secondary:hover{color:var(--vn-red-dark);background:#fbd9d6}
+.portal-header a.primary:hover,.portal-header .button.primary:hover{background:#ffd25e;color:var(--vn-red-dark)}
+.portal-header .secondary:hover{background:#ffffff22;color:#fff}
+.community-hero .secondary:hover{background:#fff;color:var(--vn-red-dark)}
+.primary.nav-item:hover{color:#fff}
+
+/* Layout chuan (_Layout): trang Phan anh / Gop y */
+.standard-layout{background:var(--vn-bg)}
+.standard-header{border-bottom:3px solid var(--vn-red);background:#fff}
+.brand-mark{background:var(--vn-red)}
+.standard-links a,.standard-footer a{color:var(--vn-red)}
+.standard-links a[aria-current=page]{border-bottom-color:var(--vn-red)}
+.standard-links .btn-outline-success{color:var(--vn-red);border-color:var(--vn-red);background:#fff}
+.standard-links .btn-outline-success:hover{background:var(--vn-red);color:#fff}
+.standard-footer{border-top-color:var(--vn-line)}
+.btn-success,.btn-primary{background:var(--vn-red);border-color:var(--vn-red);color:#fff}
+.btn-success:hover,.btn-primary:hover{background:var(--vn-red-dark);border-color:var(--vn-red-dark);color:#fff}
+.btn-outline-success{color:var(--vn-red);border-color:var(--vn-red)}
+.btn-outline-success:hover{background:var(--vn-red);color:#fff}
+.badge.text-bg-secondary,.badge.text-bg-success{background:var(--vn-gold-soft)!important;color:#7a5600!important}
+.alert-info{background:#fff4ee;border-color:var(--vn-line);color:var(--vn-red-dark)}

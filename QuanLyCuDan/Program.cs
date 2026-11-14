@@ -9,6 +9,10 @@ using Microsoft.AspNetCore.DataProtection;
 using QuanLyCuDan.Hubs;
 using QuanLyCuDan.Controllers;
 
+using QuanLyCuDan.Repositories.Implementations;
+using QuanLyCuDan.Repositories.Interfaces;
+using QuanLyCuDan.Services.Implementations;
+using QuanLyCuDan.Services.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -18,27 +22,52 @@ var cookiePolicy = localDevelopment ? CookieSecurePolicy.SameAsRequest : CookieS
 if (localDevelopment)
     builder.Services.AddDataProtection().SetApplicationName("QuanLyCuDan").PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, ".local", "keys")));
 // Add services to the container.
-builder.Services.AddControllersWithViews(o => o.Filters.Add(new Microsoft.AspNetCore.Mvc.ResponseCacheAttribute { NoStore = true, Location = Microsoft.AspNetCore.Mvc.ResponseCacheLocation.None }));
+builder.Services.AddControllersWithViews(o =>
+{
+    o.Filters.Add(new Microsoft.AspNetCore.Mvc.ResponseCacheAttribute { NoStore = true, Location = Microsoft.AspNetCore.Mvc.ResponseCacheLocation.None });
+    o.ModelMetadataDetailsProviders.Add(new QuanLyCuDan.Auth.VietnameseMetadataProvider());
+    QuanLyCuDan.Auth.VietnameseMetadataProvider.Apply(o.ModelBindingMessageProvider);
+});
 builder.Services.AddDbContext<MyStockContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("MyStock")));
 builder.Services.AddSingleton<TokenIssuer>();
-builder.Services.AddScoped<NavigationService>();
+builder.Services.AddScoped<INavigationService, NavigationService>();
 builder.Services.AddScoped<PersistenceSession>();
-builder.Services.AddScoped<SessionService>();
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<AccountService>();
-builder.Services.AddScoped<AdminService>();
-builder.Services.AddScoped<PublicPortalService>();
-builder.Services.AddScoped<RegistrationService>();
-builder.Services.AddScoped<ResidentService>();
-builder.Services.AddScoped<FeedbackService>();
-builder.Services.AddScoped<OrganizationService>();
-builder.Services.AddScoped<AnnouncementAccessService>();
-builder.Services.AddScoped<AnnouncementService>();
-builder.Services.AddScoped<NotificationSubscriptionService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<RoleService>();
-builder.Services.AddScoped<PermissionService>();
-builder.Services.AddScoped<RoleAssignmentService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IPublicPortalService, PublicPortalService>();
+builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+builder.Services.AddScoped<IResidentService, ResidentService>();
+builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IAuditRepository, AuditRepository>();
+builder.Services.AddScoped<IPermissionRepository, PermissionRepository>();
+builder.Services.AddScoped<IResidentialUnitRepository, ResidentialUnitRepository>();
+builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
+builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+builder.Services.AddScoped<IPermissionChecker, PermissionChecker>();
+builder.Services.AddScoped<IAnnouncementAccessService, AnnouncementAccessService>();
+builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
+builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<INotificationSubscriptionService, NotificationSubscriptionService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+builder.Services.AddScoped<IPublicPortalRepository, PublicPortalRepository>();
+builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+builder.Services.AddScoped<IResidentRepository, ResidentRepository>();
+builder.Services.AddScoped<IAttachmentStorage, LocalAttachmentStorage>();
+builder.Services.AddScoped<IFeedbackNotifier, FeedbackNotifier>();
+builder.Services.AddScoped<IRegistrationRepository, RegistrationRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IRoleAssignmentRepository, RoleAssignmentRepository>();
+builder.Services.AddScoped<IPermissionCatalogRepository, PermissionCatalogRepository>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IAdminGuard, AdminGuard>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
 builder.Services.AddAntiforgery(o =>
 {
     o.HeaderName = "X-CSRF-TOKEN";
@@ -99,6 +128,22 @@ if (!app.Environment.IsDevelopment())
 if (!localDevelopment)
     app.UseHttpsRedirection();
 app.UseStaticFiles();
+// Trang lỗi tiếng Việt cho các mã 401/403/404... không có nội dung.
+app.UseStatusCodePages(async statusContext =>
+{
+    var response = statusContext.HttpContext.Response;
+    if (response.ContentType != null)
+        return;
+    var message = response.StatusCode switch
+    {
+        401 => "Vui lòng đăng nhập để tiếp tục.",
+        403 => "Bạn chưa được cấp quyền sử dụng chức năng này.",
+        404 => "Không tìm thấy trang bạn yêu cầu.",
+        _ => "Đã xảy ra lỗi. Vui lòng thử lại."
+    };
+    response.ContentType = "text/html; charset=utf-8";
+    await response.WriteAsync("<!doctype html><html lang=\"vi\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + message + "</title></head><body style=\"font-family:Segoe UI,sans-serif;text-align:center;padding:3rem 1rem;font-size:1.2rem\"><h1>" + message + "</h1><p><a href=\"/\">Về trang chủ</a></p></body></html>");
+});
 app.UseRouting();
 app.Use(async (context, next) =>
 {

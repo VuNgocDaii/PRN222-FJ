@@ -1,5 +1,8 @@
 @model QuanLyCuDan.Models.FeedbackPageViewModel
 @{
+    var perms = ViewData["Permissions"] as HashSet<string> ?? new HashSet<string>();
+    if (new[] { "accounts.read", "roles.read", "permissions.read", "feedback.read", "announcements.create", "organizations.read" }.Any(perms.Contains))
+        Layout = "_ManagementLayout";
     ViewData["Title"] = "Phản ánh / Góp ý";
     string CategoryName(string? category) => category switch { "ENVIRONMENT" => "Môi trường", "INFRASTRUCTURE" => "Hạ tầng", _ => "Khác" };
 }
@@ -80,6 +83,7 @@
     </div>
 </div>
 @section Styles {
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/feedback.css" asp-append-version="true" />
 }
 @section Scripts {

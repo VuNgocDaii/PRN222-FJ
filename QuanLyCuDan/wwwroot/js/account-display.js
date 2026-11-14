@@ -1,5 +1,5 @@
 (() => {
-    const scopeLabels = { SYSTEM: "Toàn hệ thống", SELF: "Cá nhân", AREA: "Khu dân cư", GROUP: "Tổ dân phố" };
+    const scopeLabels = { SYSTEM: "Toàn hệ thống", SELF: "Cá nhân", AREA: "Xã", GROUP: "Thôn" };
     const verificationLabels = { PENDING: "Chờ xác minh", APPROVED: "Đã xác minh", REJECTED: "Chưa được duyệt", NOT_APPLICABLE: "Không áp dụng" };
     const instant = value => new Date(/Z$|[+-]\d{2}:\d{2}$/.test(value) ? value : value + "Z");
     window.accountDisplay = {

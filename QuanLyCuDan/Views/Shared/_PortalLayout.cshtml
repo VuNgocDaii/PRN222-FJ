@@ -1,21 +1,24 @@
 @{
     var residentPage = ViewContext.RouteData.Values["controller"]?.ToString() == "Resident";
+    var homePage = ViewContext.RouteData.Values["controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["action"]?.ToString() == "Index";
 }
 <!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@ViewData["Title"] · Cổng thông tin cư dân</title>
+    <title>@ViewData["Title"] · Cổng thông tin thôn</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/portal.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/app-ui.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/theme-vneid.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/simple-ui.css" asp-append-version="true">
 </head>
 <body class="portal-body">
     <a href="#main-content" class="skip-link">Chuyển đến nội dung</a>
     <header class="portal-header"><div class="portal-container header-inner">
-        <a href="/" class="portal-brand"><span class="brand-mark">KDC</span><span>Quản lý cư dân<small>Kết nối cộng đồng · Phục vụ cư dân</small></span></a>
+        <a href="/" class="portal-brand"><span class="brand-mark">TT</span><span>Cổng thông tin thôn<small>Kết nối cộng đồng · Phục vụ cư dân</small></span></a>
         <nav aria-label="Điều hướng chính">
-            <a href="/" class="@(!residentPage ? "selected" : "")">Trang công khai</a>
+            @if (!homePage) { <a href="/">Trang chủ</a> }
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <a href="/Resident" class="@(residentPage ? "selected" : "")">Cổng cư dân</a>
@@ -26,7 +29,7 @@
             }
             else
             {
-                <a href="/Account/Login">Đăng nhập</a><a class="button primary" href="/Account/Register">Đăng ký cư dân</a>
+                @if (!homePage) { <a class="button primary" href="/Account/Login">Đăng nhập</a> }
             }
         </nav>
     </div></header>
@@ -35,7 +38,7 @@
         @if (TempData["Error"] is string error) { <p class="message error" role="alert">@error</p> }
         @RenderBody()
     </main>
-    <footer class="portal-footer"><div class="portal-container"><strong>KDC · Cổng thông tin cư dân</strong><span>Thông tin minh bạch. Cộng đồng gắn kết.</span><a href="/Home/Privacy">Quyền riêng tư</a></div></footer>
+    <footer class="portal-footer"><div class="portal-container"><strong>Cổng thông tin thôn</strong><span>Thông tin minh bạch. Cộng đồng gắn kết.</span><a href="/Home/Privacy">Quyền riêng tư</a></div></footer>
     <script src="~/js/portal.js" asp-append-version="true" defer></script>
     <partial name="_SessionToken" />
     @await RenderSectionAsync("Scripts", required: false)

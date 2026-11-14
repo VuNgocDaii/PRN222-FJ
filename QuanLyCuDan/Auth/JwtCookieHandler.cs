@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services.Interfaces;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -9,7 +10,7 @@ namespace QuanLyCuDan.Auth;
 
 // MVC forms and SignalR send the signed JWT in an HttpOnly cookie.
 public sealed class JwtCookieHandler(IOptionsMonitor<AuthenticationSchemeOptions> options,
-    ILoggerFactory logger, UrlEncoder encoder, TokenIssuer tokens, SessionService sessions,
+    ILoggerFactory logger, UrlEncoder encoder, TokenIssuer tokens, ISessionService sessions,
     IWebHostEnvironment environment) : SignInAuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     private const string CookieName = "qlcd.auth";

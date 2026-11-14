@@ -14,7 +14,7 @@
 <p class="muted small">Các thời điểm hiển thị theo giờ Việt Nam.</p>
 </section><section class="panel"><h2>Thao tác</h2><div class="announcement-actions">
 @if (Model.CanEdit) { <a href="/Announcements/@a.Id/Edit" class="announcement-button secondary">Chỉnh sửa nội dung</a> }
-@if (Model.CanSubmit) { <form asp-action="Submit" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><button type="submit" class="primary">Gửi duyệt</button></form> }
+@if (Model.CanSubmit) { <form asp-action="Submit" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><button type="submit" class="primary">@(Model.PublishesOnSubmit ? "Đăng thông báo" : "Gửi duyệt")</button></form> }
 @if (Model.CanWithdraw) { <form asp-action="Withdraw" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><button type="submit" class="secondary">Rút lại để chỉnh sửa</button></form> }
 @if (Model.CanReview)
 {
@@ -24,7 +24,7 @@
 @if (Model.CanUnpublish) { <details><summary>Gỡ thông báo</summary><form asp-action="Unpublish" asp-route-id="@a.Id" method="post"><input type="hidden" name="rowVersion" value="@version"><label>Lý do gỡ<textarea name="reason" rows="3" maxlength="1000" required></textarea></label><p class="muted small">Sau khi gỡ, thông báo ngừng hiển thị trên trang công khai và cổng cư dân.</p><button type="submit" class="danger">Xác nhận gỡ thông báo</button></form></details> }
 @if (a.Status == "PUBLISHED" && a.ExpiresAt <= DateTime.UtcNow) { <p class="validation">Thông báo đã hết hạn và không còn hiển thị với người đọc. Gỡ bài để chỉnh sửa thời hạn nếu cần đăng lại.</p> }
 @if (a.Status == "PUBLISHED" && a.Audience == "PUBLIC" && (a.ExpiresAt == null || a.ExpiresAt > DateTime.UtcNow)) { <a href="/thong-bao/@a.Id">Xem trên trang công khai →</a> }
-@if (!Model.CanEdit && !Model.CanSubmit && !Model.CanWithdraw && !Model.CanReview && !Model.CanUnpublish) { <p class="muted">Bạn có quyền xem. Thao tác tiếp theo cần người có quyền phù hợp trong tổ dân phố.</p> }
+@if (!Model.CanEdit && !Model.CanSubmit && !Model.CanWithdraw && !Model.CanReview && !Model.CanUnpublish) { <p class="muted">Bạn có quyền xem. Thao tác tiếp theo cần người có quyền phù hợp trong thôn.</p> }
 </div></section></div>
 @if (Model.RecipientCount != null) { <section class="panel"><h2>Thống kê đã đọc</h2><p>@Model.ReadCount / @Model.RecipientCount người nhận đã đánh dấu đọc thông báo.</p></section> }
 <section class="panel"><h2>Lịch sử thao tác</h2>@if (Model.History.Count == 0) { <p class="muted">Chưa có nhật ký được ghi nhận.</p> }<ol class="announcement-history">@foreach (var h in Model.History) { <li><strong>@AnnouncementLabels.Event(h.EventCode)</strong><span>@h.Actor · @h.OccurredAt.AddHours(7).ToString("dd/MM/yyyy HH:mm")</span></li> }</ol></section>

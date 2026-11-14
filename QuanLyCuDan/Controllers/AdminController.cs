@@ -1,9 +1,10 @@
+using QuanLyCuDan.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuanLyCuDan.Services;
 namespace QuanLyCuDan.Controllers;
 [Authorize(AuthenticationSchemes = "Cookies")]
-public sealed class AdminController(AdminService service, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public sealed class AdminController(IAdminService service, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     public async Task<IActionResult> Index(string? tab, string? search, int page = 1, string? userId = null, string? roleId = null, int? permissionId = null)
     {

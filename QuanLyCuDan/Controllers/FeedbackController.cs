@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuanLyCuDan.Auth;
@@ -6,7 +7,7 @@ using QuanLyCuDan.Services;
 namespace QuanLyCuDan.Controllers;
 
 [Authorize(AuthenticationSchemes = "Cookies"), Route("Feedback")]
-public sealed class FeedbackController(FeedbackService service, NavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
+public sealed class FeedbackController(IFeedbackService service, INavigationService navigation, PersistenceSession persistence) : BaseController(navigation, persistence)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(long? id, string? notice) => View("Index", await service.GetAsync(User, id, notice));

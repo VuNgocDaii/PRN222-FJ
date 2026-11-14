@@ -1,3 +1,4 @@
+using QuanLyCuDan.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
@@ -5,7 +6,7 @@ using QuanLyCuDan.Auth;
 using QuanLyCuDan.Services;
 namespace QuanLyCuDan.Controllers;
 
-public abstract class BaseController(NavigationService navigation, PersistenceSession persistence) : Controller
+public abstract class BaseController(INavigationService navigation, PersistenceSession persistence) : Controller
 {
     protected async Task<IActionResult> SubmitForm(Func<Task> save, Func<Task<IActionResult>> invalid, Func<IActionResult> success)
     {

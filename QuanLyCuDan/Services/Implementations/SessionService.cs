@@ -1,14 +1,20 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using QuanLyCuDan.Models;
-namespace QuanLyCuDan.Services;
+using QuanLyCuDan.Repositories.Interfaces;
+using QuanLyCuDan.Services.Interfaces;
 
-public sealed class SessionService(MyStockContext context) : ApplicationService(context)
+namespace QuanLyCuDan.Services.Implementations;
+
+public sealed class SessionService(IPermissionChecker checker, ISessionRepository sessions) : ISessionService
 {
-    public Task<bool> IsValidAsync(ClaimsPrincipal actor) => ValidSession(db, actor);
-    public Task<UserSession> GetForSignInAsync(ClaimsPrincipal actor)
+    public Task<bool> IsValidAsync(ClaimsPrincipal actor)
     {
-        var id = CurrentUserId(actor); var sid = Guid.Parse(actor.FindFirstValue("sid")!);
-        return db.UserSessions.Include(s => s.User).SingleAsync(s => s.Id == sid && s.UserId == id && s.RevokedAt == null);
+        var id = actor.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (id == null || !Guid.TryParse(actor.FindFirstValue("sid"), out var sid))
+            return Task.FromResult(false);
+        return sessions.IsValidAsync(id, sid);
     }
+
+    public Task<UserSession> GetForSignInAsync(ClaimsPrincipal actor) =>
+        sessions.GetActiveWithUserAsync(checker.UserId(actor), Guid.Parse(actor.FindFirstValue("sid")!));
 }

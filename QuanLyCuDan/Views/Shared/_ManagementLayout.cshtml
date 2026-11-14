@@ -9,16 +9,19 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>@ViewData["Title"] · Quản lý cư dân</title>
+    <title>@ViewData["Title"] · Cổng thông tin thôn</title>
+    @await RenderSectionAsync("Styles", required: false)
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/app-ui.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/theme-vneid.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/simple-ui.css" asp-append-version="true">
     @if (ViewData["AdminTabs"] is true) { <link rel="stylesheet" href="~/css/admin-mvc.css" asp-append-version="true"> }
 </head>
 <body>
     <a class="skip-link" href="#main-content">Chuyển đến nội dung</a>
     <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" href="/Account/Profile"><span class="brand-mark">KDC</span><strong>Quản lý cư dân</strong></a>
+            <a class="brand" href="/Account/Profile"><span class="brand-mark">TT</span><strong>Cổng thông tin thôn</strong></a>
             <nav aria-label="Điều hướng chính">
                 <a href="/" class="nav-item">Trang công khai</a>
                 @if (ViewData["CanManageAnnouncements"] is true)
